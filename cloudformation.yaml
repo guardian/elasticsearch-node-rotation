@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: "Step Function for rotating Elasticsearch nodes"
+
+Parameters:
+  S3Bucket:
+    Type: String
+    Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist
+  S3Path:
+    Type: String
+    Description: Path to .zip file used by lambda functions e.g. <stack>/<stage>/elasticsearch-node-rotation/elasticsearch-node-rotation.zip
+
+Resources:
+
+  NodeRotationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub NodeRotation
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+            - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: LambdaPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                - lambda:InvokeFunction
+                Resource: "*"
+        - PolicyName: ElasticsearchAdminAsgPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                - autoscaling:DescribeAutoScalingGroups
+                Resource: "*"
+        - PolicyName: ElasticsearchAdminSsmPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                - ssm:SendCommand
+                Resource: "*"
+
+  StatesExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: "Allow"
+          Principal:
+            Service: !Sub states.${AWS::Region}.amazonaws.com
+          Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: StatesExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                - lambda:InvokeFunction
+                Resource: "*"
+
+  ElasticsearchClusterHealthCheckLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub elasticsearch-cluster-healthcheck
+      Description: "Checks the health of an Elasticsearch cluster"
+      Handler: "healthcheck.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Path}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+
+  IdentifyNodeLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub identify-node
+      Description: "Finds the oldest node in an Elasticsearch cluster"
+      Handler: "identifyNode.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Path}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+
+  NodeRotationStepFunction:
+    Type: "AWS::StepFunctions::StateMachine"
+    DependsOn: ElasticsearchClusterHealthCheckLambda
+    Properties:
+      DefinitionString:
+        !Sub
+          - |
+           {
+             "Comment": "Elasticsearch Node Rotation",
+             "StartAt": "CheckClusterHealth",
+             "States": {
+               "CheckClusterHealth": {
+                 "Type": "Task",
+                 "Resource": "${HealthcheckArn}",
+                 "Next": "IdentifyNode"
+               },
+               "IdentifyNode": {
+                 "Type": "Task",
+                 "Resource": "${IdentifyNodeArn}",
+                 "End": true
+               }
+             }
+           }
+          -
+            HealthcheckArn: !GetAtt ElasticsearchClusterHealthCheckLambda.Arn
+            IdentifyNodeArn: !GetAtt IdentifyNodeLambda.Arn
+      RoleArn: !GetAtt StatesExecutionRole.Arn
