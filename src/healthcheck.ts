@@ -1,14 +1,12 @@
 const AWS = require('aws-sdk');
 
 export function handler(event, context, callback) {
-    console.log("Checking ES cluster health");
 
     function wait() {
       return new Promise((resolve, reject) => {
-        setTimeout(() => resolve("hello"), 2000)
+        setTimeout(() => resolve(), 2000)
       });
     }
-
 
     const ssm = new AWS.SSM();
 
@@ -16,35 +14,29 @@ export function handler(event, context, callback) {
         DocumentName: "AWS-RunShellScript",
         Parameters: {
             commands: [
-              "curl localhost:9200/"
+                event.command
             ]
         },
         InstanceIds: [
-            "i-03469a7182a46d6c6"
+            event.instanceId
         ]
     };
 
     ssm.sendCommand(sendCommandParams, async function (err, data) {
         if (err) console.log(err, err.stack);
         else {
-            console.log("command sent:")
-            console.log(data)
-
-            await wait()
+            await wait();
 
             const getCommandParams = {
-              InstanceId: "i-03469a7182a46d6c6",
+              InstanceId: event.instanceId,
               CommandId: data.Command.CommandId
             };
 
             ssm.getCommandInvocation(getCommandParams, function(err, data) {
-                if (err) console.log(err, err.stack);
-                else {
-                    console.log("command details:")
-                    console.log(data);
-
-                    callback(null, "Success");
+                if (data.Status === "Success") {
+                    callback(null, data.StandardOutputContent);
                 }
+                else callback(data.StatusDetails, null)
             });
         }
     });

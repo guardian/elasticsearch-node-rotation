@@ -125,22 +125,6 @@ Resources:
       Runtime: nodejs8.10
       Timeout: 300
 
-  GetCommandLambda:
-    Type: "AWS::Lambda::Function"
-    DependsOn: NodeRotationLambdaRole
-    Properties:
-      FunctionName:
-          !Sub enr-get-command-lambda
-      Description: "Gets the result of an ssm command"
-      Handler: "getCommand.handler"
-      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
-      Code:
-        S3Bucket: !Sub ${S3Bucket}
-        S3Key: !Sub ${S3Path}
-      MemorySize: 512
-      Runtime: nodejs8.10
-      Timeout: 300
-
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn: ElasticsearchClusterHealthCheckLambda
