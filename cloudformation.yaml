@@ -82,7 +82,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub elasticsearch-cluster-healthcheck
+          !Sub enr-cluster-healthcheck
       Description: "Checks the health of an Elasticsearch cluster"
       Handler: "healthcheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -98,13 +98,45 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub identify-node
+          !Sub enr-identify-node
       Description: "Finds the oldest node in an Elasticsearch cluster"
       Handler: "identifyNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${S3Bucket}
         S3Key: !Sub ${S3Key}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+
+  SendCommandLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub enr-send-command-lambda
+      Description: "Sends an ssm command"
+      Handler: "sendCommand.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Path}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+
+  GetCommandLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub enr-get-command-lambda
+      Description: "Gets the result of an ssm command"
+      Handler: "getCommand.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Path}
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
