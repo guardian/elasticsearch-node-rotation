@@ -16,7 +16,6 @@ export async function handler(event) {
 
 }
 
-let awsAutoscaling = new AWS.AutoScaling();
 let awsEc2 = new AWS.EC2();
 
 function getInstances(asgName: string): Promise<string[]> {
