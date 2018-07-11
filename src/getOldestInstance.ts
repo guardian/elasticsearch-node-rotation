@@ -7,7 +7,7 @@ export async function handler(event) {
         getInstances(asg)
             .then(ids => getOldestInstanceId(ids))
             .then(oldestInstance => {
-                resolve({"oldestInstance": oldestInstance.id});
+                resolve(oldestInstance.id);
             })
             .catch(error => reject(error))
     })

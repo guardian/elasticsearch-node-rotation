@@ -93,14 +93,14 @@ Resources:
       Runtime: nodejs8.10
       Timeout: 300
 
-  IdentifyNodeLambda:
+  GetOldestInstanceLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub identify-node
+          !Sub enr-get-oldest-lambda
       Description: "Finds the oldest node in an Elasticsearch cluster"
-      Handler: "identifyNode.handler"
+      Handler: "getOldestInstance.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${S3Bucket}
