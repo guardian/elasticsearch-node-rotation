@@ -77,14 +77,14 @@ Resources:
                 - lambda:InvokeFunction
                 Resource: "*"
 
-  ElasticsearchClusterHealthCheckLambda:
+  ElasticsearchClusterStatusCheckLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-elasticsearch-healthcheck
-      Description: "Checks the health of an Elasticsearch cluster"
-      Handler: "healthcheck.handler"
+          !Sub enr-cluster-statuscheck
+      Description: "Checks the status of an Elasticsearch cluster"
+      Handler: "statuscheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${S3Bucket}
@@ -98,7 +98,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-get-oldest-lambda
+          !Sub enr-get-oldest-instance
       Description: "Finds the oldest node in an Elasticsearch cluster"
       Handler: "getOldestInstance.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -114,7 +114,7 @@ Resources:
 
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
-    DependsOn: ElasticsearchClusterHealthCheckLambda
+    DependsOn: ElasticsearchClusterStatusCheckLambda
     Properties:
       DefinitionString:
         !Sub
@@ -126,16 +126,16 @@ Resources:
                "GetOldestInstance": {
                  "Type": "Task",
                  "Resource": "${GetOldestInstanceArn}",
-                 "Next": "CheckClusterHealth"
+                 "Next": "CheckClusterStatus"
                },
-               "CheckClusterHealth": {
+               "CheckClusterStatus": {
                  "Type": "Task",
-                 "Resource": "${HealthcheckArn}",
+                 "Resource": "${StatuscheckArn}",
                  "End": true
                }
              }
            }
           -
-            HealthcheckArn: !GetAtt ElasticsearchClusterHealthCheckLambda.Arn
             GetOldestInstanceArn: !GetAtt GetOldestInstanceLambda.Arn
+            StatuscheckArn: !GetAtt ElasticsearchClusterStatusCheckLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn

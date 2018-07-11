@@ -1,5 +1,5 @@
-import SSM = require("aws-sdk/clients/ssm");
-import {StandardOutputContent} from "aws-sdk/clients/ssm";
+import SSM = require('aws-sdk/clients/ssm');
+import {StandardOutputContent} from 'aws-sdk/clients/ssm';
 const AWS = require('aws-sdk');
 const ssm = new AWS.SSM();
 
@@ -9,7 +9,7 @@ export function ssmCommand(command: string, instanceId: string): Promise<Standar
             .then((sendResult: SSM.Types.SendCommandResult) => wait(2000, sendResult.Command.CommandId))
             .then((commandId: string) => getCommandResult(commandId, instanceId))
             .then((result: SSM.Types.GetCommandInvocationResult) => {
-                if (result.Status === "Success") resolve(result.StandardOutputContent);
+                if (result.Status === 'Success') resolve(result.StandardOutputContent);
                 else reject(`SSM command result was: ${result.Status} / ${result.StatusDetails}`)
             })
             .catch(reject)
@@ -24,7 +24,7 @@ function wait(millis: number, value) {
 
 function sendCommand(command, instanceId): Promise<SSM.Types.SendCommandResult> {
     return ssm.sendCommand({
-        DocumentName: "AWS-RunShellScript",
+        DocumentName: 'AWS-RunShellScript',
         Parameters: {
             commands: [
                 command
