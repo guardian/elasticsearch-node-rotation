@@ -1,56 +1,46 @@
+import SSM = require("aws-sdk/clients/ssm");
 const AWS = require('aws-sdk');
-
 const ssm = new AWS.SSM();
 
-export function handler(event, context, callback) {
-    sendCommand(event.command, event.instanceId)
-        .then(commandId => getCommandResult(commandId, event.instanceId))
-        .then(result => callback(null, result))
-        .catch(error => {
-            console.log("Error: " + error);
-            callback(error)
-        })
-}
-
-function wait(millis) {
+export async function handler(event) {
     return new Promise((resolve, reject) => {
-        setTimeout(() => resolve(), millis)
+        sendCommand(event.command, event.instanceId)
+            .then((sendResult: SSM.Types.SendCommandResult) => wait(2000, sendResult.Command.CommandId))
+            .then((commandId: string) => getCommandResult(commandId, event.instanceId))
+            .then((result: SSM.Types.GetCommandInvocationResult) => {
+                if (result.Status === "Success") resolve(result.StandardOutputContent)
+                else reject(`SSM command result was: ${result.Status} / ${result.StatusDetails}`)
+            })
+            .catch(error => {
+                console.log("Error: " + error);
+                reject(error)
+            })
     });
 }
 
-function sendCommand(command, instanceId) {
+function wait(millis: number, value) {
     return new Promise((resolve, reject) => {
-        const sendCommandParams = {
-            DocumentName: "AWS-RunShellScript",
-            Parameters: {
-                commands: [
-                    command
-                ]
-            },
-            InstanceIds: [
-                instanceId
-            ]
-        };
-
-        ssm.sendCommand(sendCommandParams,function (err, data) {
-            if (err) reject(err);
-            else resolve(data.Command.CommandId)
-        });
-    })
+        setTimeout(() => resolve(value), millis)
+    });
 }
 
-async function getCommandResult(commandId, instanceId) {
-    await wait(2000);
+function sendCommand(command, instanceId): Promise<SSM.Types.SendCommandResult> {
+    return ssm.sendCommand({
+        DocumentName: "AWS-RunShellScript",
+        Parameters: {
+            commands: [
+                command
+            ]
+        },
+        InstanceIds: [
+            instanceId
+        ]
+    }).promise();
+}
 
-    return new Promise((resolve, reject) => {
-        const getCommandParams = {
-            InstanceId: instanceId,
-            CommandId: commandId
-        };
-
-        ssm.getCommandInvocation(getCommandParams, function (err, data) {
-            if (data.Status === "Success") resolve(data.StandardOutputContent);
-            else reject(data.StatusDetails)
-        });
-    })
+function getCommandResult(commandId, instanceId): Promise<SSM.Types.GetCommandInvocationResult> {
+    return ssm.getCommandInvocation({
+        InstanceId: instanceId,
+        CommandId: commandId
+    }).promise();
 }
