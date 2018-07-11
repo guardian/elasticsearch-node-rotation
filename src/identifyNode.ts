@@ -1,12 +1,16 @@
 let AWS = require('aws-sdk');
 
-export function handler(event, context, callback) {
-    let asg: string = process.env.ASG_NAME;
-    console.log(`Searching for oldest node in ${asg}`);
-    getInstances(asg)
-        .then(ids => getOldestInstanceId(ids))
-        .then(oldestInstance => callback(null, { "oldestInstance": oldestInstance.id}))
-        .catch(error => callback(error))
+export async function handler(event) {
+    return new Promise((resolve, reject) => {
+        let asg: string = process.env.ASG_NAME;
+        console.log(`Searching for oldest node in ${asg}`);
+        getInstances(asg)
+            .then(ids => getOldestInstanceId(ids))
+            .then(oldestInstance => {
+                resolve({"oldestInstance": oldestInstance.id});
+            })
+            .catch(error => reject(error))
+    })
 
 }
 
