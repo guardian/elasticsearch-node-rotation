@@ -84,7 +84,7 @@ Resources:
       FunctionName:
           !Sub enr-cluster-statuscheck
       Description: "Checks the status of an Elasticsearch cluster"
-      Handler: "statuscheck.handler"
+      Handler: "clusterStatusCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${S3Bucket}
