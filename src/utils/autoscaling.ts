@@ -1,5 +1,4 @@
 let AWS = require('aws-sdk');
-
 let awsAutoscaling = new AWS.AutoScaling();
 
 export function increaseAsgSize(asgName: string, originalAsgSize: number) {
@@ -9,13 +8,7 @@ export function increaseAsgSize(asgName: string, originalAsgSize: number) {
         AutoScalingGroupName: asgName,
         DesiredCapacity: newDesiredCapacity
     };
-    awsAutoscaling.setDesiredCapacity(params, function(error, data) {
-        if (error) {
-            console.log(error, error.stack, error.statusCode);
-        } else {
-            console.log(data);
-        }
-    });
+    return awsAutoscaling.setDesiredCapacity(params).promise();
 }
 
 export function terminateOldestInstance(instanceToTerminate: string) {
@@ -24,11 +17,10 @@ export function terminateOldestInstance(instanceToTerminate: string) {
         InstanceId: instanceToTerminate,
         ShouldDecrementDesiredCapacity: true
     };
-    awsAutoscaling.terminateInstanceInAutoScalingGroup(params, function(error, data) {
-        if (error) {
-            console.log(error, error.stack, error.statusCode);
-        } else {
-            console.log(data);
-        }
-    })
+    return awsAutoscaling.terminateInstanceInAutoScalingGroup(params).promise();
+}
+
+export function describeAsg(asgName: string) {
+    let params = { AutoScalingGroupNames: [ asgName ] };
+    return awsAutoscaling.describeAutoScalingGroups(params).promise();
 }
