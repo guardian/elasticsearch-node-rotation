@@ -82,7 +82,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-cluster-healthcheck
+          !Sub elasticsearch-cluster-healthcheck
       Description: "Checks the health of an Elasticsearch cluster"
       Handler: "healthcheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -98,7 +98,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-identify-node
+          !Sub identify-node
       Description: "Finds the oldest node in an Elasticsearch cluster"
       Handler: "identifyNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
