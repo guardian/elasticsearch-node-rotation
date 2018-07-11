@@ -1,20 +1,18 @@
 import SSM = require("aws-sdk/clients/ssm");
+import {StandardOutputContent} from "aws-sdk/clients/ssm";
 const AWS = require('aws-sdk');
 const ssm = new AWS.SSM();
 
-export async function handler(event) {
+export function ssmCommand(command: string, instanceId: string): Promise<StandardOutputContent> {
     return new Promise((resolve, reject) => {
-        sendCommand(event.command, event.instanceId)
+        sendCommand(command, instanceId)
             .then((sendResult: SSM.Types.SendCommandResult) => wait(2000, sendResult.Command.CommandId))
-            .then((commandId: string) => getCommandResult(commandId, event.instanceId))
+            .then((commandId: string) => getCommandResult(commandId, instanceId))
             .then((result: SSM.Types.GetCommandInvocationResult) => {
-                if (result.Status === "Success") resolve(result.StandardOutputContent)
+                if (result.Status === "Success") resolve(result.StandardOutputContent);
                 else reject(`SSM command result was: ${result.Status} / ${result.StatusDetails}`)
             })
-            .catch(error => {
-                console.log("Error: " + error);
-                reject(error)
-            })
+            .catch(reject)
     });
 }
 
