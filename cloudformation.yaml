@@ -82,7 +82,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub elasticsearch-cluster-healthcheck
+          !Sub enr-elasticsearch-healthcheck
       Description: "Checks the health of an Elasticsearch cluster"
       Handler: "healthcheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -121,21 +121,21 @@ Resources:
           - |
            {
              "Comment": "Elasticsearch Node Rotation",
-             "StartAt": "CheckClusterHealth",
+             "StartAt": "GetOldestInstance",
              "States": {
+               "GetOldestInstance": {
+                 "Type": "Task",
+                 "Resource": "${GetOldestInstanceArn}",
+                 "Next": "CheckClusterHealth"
+               },
                "CheckClusterHealth": {
                  "Type": "Task",
                  "Resource": "${HealthcheckArn}",
-                 "Next": "IdentifyNode"
-               },
-               "IdentifyNode": {
-                 "Type": "Task",
-                 "Resource": "${IdentifyNodeArn}",
                  "End": true
                }
              }
            }
           -
             HealthcheckArn: !GetAtt ElasticsearchClusterHealthCheckLambda.Arn
-            IdentifyNodeArn: !GetAtt IdentifyNodeLambda.Arn
+            GetOldestInstanceArn: !GetAtt GetOldestInstanceLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
