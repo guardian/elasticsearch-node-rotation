@@ -1,3 +1,5 @@
+import {describeAsg} from './utils/autoscaling'
+
 let AWS = require('aws-sdk');
 
 export async function handler(event) {
@@ -14,13 +16,11 @@ export async function handler(event) {
 
 }
 
-let awsAutoscaling = new AWS.AutoScaling();
 let awsEc2 = new AWS.EC2();
 
 function getInstances(asgName: string): Promise<string[]> {
-    let params = { AutoScalingGroupNames: [ asgName ] };
-    let requestPromise = awsAutoscaling.describeAutoScalingGroups(params).promise();
-    return requestPromise.then(
+    let autoScalingRequest = describeAsg(asgName);
+    return autoScalingRequest.then(
         function (data) {
             let instances = data.AutoScalingGroups[0].Instances;
             return instances.map(instance => instance.InstanceId);
