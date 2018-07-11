@@ -136,7 +136,17 @@ Resources:
                "CheckClusterStatus": {
                  "Type": "Task",
                  "Resource": "${StatuscheckArn}",
-                 "End": true
+                 "Next": "StatusIsGreen"
+               },
+               "StatusIsGreen": {
+                 "Type": "Choice",
+                 "Choices": [
+                   {
+                     "Variable": "$",
+                     "StringEquals": "green"
+                   }
+                 ],
+                 "end": true
                }
              }
            }
