@@ -1,38 +1,36 @@
 let AWS = require('aws-sdk');
 
 export function handler(event, context, callback) {
-    console.log("Searching for oldest node...");
-    getInstanceIds("asg123", callback);
+    let asg: string = process.env.ASG_NAME;
+    console.log(`Searching for oldest node in ${asg}`);
+    identifyOldestInstance(asg, callback);
 }
 
-let asg = new AWS.AutoScaling();
-let ec2 = new AWS.EC2();
+let awsAutoscaling = new AWS.AutoScaling();
+let awsEc2 = new AWS.EC2();
 
-function getInstanceIds(asgName: string, callback) {
+function identifyOldestInstance(asgName: string, callback) {
     let params = { AutoScalingGroupNames: [ asgName ] };
-    asg.describeAutoScalingGroups(params, function(error, data) {
+    awsAutoscaling.describeAutoScalingGroups(params, function(error, data) {
        if (error) {
            console.log(error, error.stack, error.statusCode);
        } else {
            let instances = data.AutoScalingGroups[0].Instances;
            let ids = instances.map(instance => instance.InstanceId);
-           getOldestInstance(ids, callback);
+           getOldestInstanceId(ids, callback);
        }
     })
 }
 
-function getOldestInstance(instanceIds: string[], callback) {
+function getOldestInstanceId(instanceIds: string[], callback) {
+    console.log(`Fetching details for: ${instanceIds}`);
     let params = { InstanceIds: instanceIds };
-    console.log(params);
-    ec2.describeInstances(params, function (error, data) {
+    awsEc2.describeInstances(params, function (error, data) {
       if (error) {
           console.log(error, error.stack, error.statusCode)
       } else {
-          console.log(data);
           let instanceArrays = data.Reservations.map(instanceArrays => instanceArrays.Instances);
-          console.log(instanceArrays);
           let instances: Instance[] = instanceArrays.concat.apply([], instanceArrays).map(instance => new Instance(instance.InstanceId, instance.LaunchTime));
-          console.log(`All instances are: ${instances.map(instance => instance.id)}`);
           let sortedInstances: Instance[] = instances.sort(function(a,b){return a.launchTime.getTime() - b.launchTime.getTime()});
           let oldestInstance: Instance = sortedInstances[0];
           console.log(`Oldest instance ${oldestInstance.id} was launched at ${oldestInstance.launchTime}`);
