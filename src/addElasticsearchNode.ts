@@ -19,9 +19,10 @@ export async function handler(event): Promise<AddElasticsearchNodeResponse> {
                 if (jsonResult.acknowledged != true) {
                     const error = `Unexpected Elasticsearch response, we got: ${JSON.stringify(jsonResult)}`;
                     reject(error);
+                } else {
+                    return currentCapacity;
                 }
             })
-            .then(() => currentCapacity)
             .then(capacity => {
                 return increaseAsgSize(asg, capacity);
             });
