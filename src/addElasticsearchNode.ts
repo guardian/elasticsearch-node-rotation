@@ -2,9 +2,9 @@ import {ssmCommand} from './utils/ssmCommand';
 import {increaseAsgSize, describeAsg} from './utils/autoscaling';
 import {StandardOutputContent} from 'aws-sdk/clients/ssm';
 
-export async function handler(event) {
+export async function handler(event): Promise<AddElasticsearchNodeResponse> {
 
-    return new Promise((resolve, reject) => {
+    return new Promise<AddElasticsearchNodeResponse>((resolve, reject) => {
         const instanceId: string = event.instanceId;
         const asg: string = process.env.ASG_NAME;
         const disableRebalancingCommand: Object =
@@ -42,7 +42,7 @@ export async function handler(event) {
 
         return Promise.all([currentCapacity, updateActions])
             .then(results => {
-                const response = {"instanceId": instanceId, "expectedClusterSize": results[0] + 1 };
+                const response: AddElasticsearchNodeResponse  = {"instanceId": instanceId, "expectedClusterSize": results[0] + 1 };
                 resolve(response)
             })
             .catch(
