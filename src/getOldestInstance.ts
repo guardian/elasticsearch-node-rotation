@@ -40,10 +40,7 @@ function getOldestInstanceId(instanceIds: string[]): Promise<Instance> {
         function(data) {
             let instanceArrays = data.Reservations.map(instanceArrays => instanceArrays.Instances);
             let instances: Instance[] = instanceArrays.concat.apply([], instanceArrays).map(instance => new Instance(instance.InstanceId, instance.LaunchTime));
-            let sortedInstances: Instance[] = instances.sort(function(a,b){return a.launchTime.getTime() - b.launchTime.getTime()});
-            let oldestInstance: Instance = sortedInstances[0];
-            console.log(`Oldest instance ${oldestInstance.id} was launched at ${oldestInstance.launchTime}`);
-            return oldestInstance;
+            return findOldestInstance(instances);
         },
         function (error) {
             console.log(error, error.stack, error.statusCode);
@@ -52,7 +49,14 @@ function getOldestInstanceId(instanceIds: string[]): Promise<Instance> {
     )
 }
 
-class Instance {
+export function findOldestInstance(instances: Instance[]): Instance {
+    let sortedInstances: Instance[] = instances.sort(function(a,b){return a.launchTime.getTime() - b.launchTime.getTime()});
+    let oldestInstance: Instance = sortedInstances[0];
+    console.log(`Oldest instance ${oldestInstance.id} was launched at ${oldestInstance.launchTime}`);
+    return oldestInstance;
+}
+
+export class Instance {
 
     id: string;
     launchTime: Date;
