@@ -117,6 +117,25 @@ Resources:
         Variables:
           ASG_NAME: !Sub ${AutoScalingGroupName}
 
+  AddElasticsearchNodeLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub enr-add-elasticsearch-node
+      Description: "Adds a new node to the Elasticsearch cluster"
+      Handler: "addElasticsearchNode.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Key}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+      Environment:
+        Variables:
+          ASG_NAME: !Sub ${AutoScalingGroupName}
+
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn: ElasticsearchClusterStatusCheckLambda
@@ -136,6 +155,28 @@ Resources:
                "CheckClusterStatus": {
                  "Type": "Task",
                  "Resource": "${StatuscheckArn}",
+                 "Next": "StatusIsGreen"
+               },
+               "StatusIsGreen": {
+                 "Type": "Choice",
+                 "Choices": [
+                   {
+                     "Not": {
+                       "Variable": "$.clusterStatus",
+                       "StringEquals": "green"
+                     },
+                     "Next": "FailState"
+                   }
+                 ],
+                 "Default": "AddNewElasticsearchNode"
+               },
+               "FailState": {
+                 "Type": "Fail",
+                 "Cause": "Unhealthy Cluster!"
+               },
+               "AddNewElasticsearchNode": {
+                 "Type": "Task",
+                 "Resource": "${AddElasticsearchNodeArn}",
                  "End": true
                }
              }
@@ -143,4 +184,5 @@ Resources:
           -
             GetOldestInstanceArn: !GetAtt GetOldestInstanceLambda.Arn
             StatuscheckArn: !GetAtt ElasticsearchClusterStatusCheckLambda.Arn
+            AddElasticsearchNodeArn: !GetAtt AddElasticsearchNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
