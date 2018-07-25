@@ -18,7 +18,12 @@ export async function handler(event) {
         const currentCapacity: Promise<number> = describeAsg(asg)
             .then(
                 asgInfo => {
-                    return asgInfo.AutoScalingGroups[0].DesiredCapacity;
+                    const asgsInResponse = asgInfo.AutoScalingGroups.length;
+                    if (asgsInResponse != 1) {
+                        reject(`Expected information about a single ASG, but got ${asgsInResponse}`);
+                    } else {
+                        return asgInfo.AutoScalingGroups[0].DesiredCapacity;
+                    }
                 }
             );
 
