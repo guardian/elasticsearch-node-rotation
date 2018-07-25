@@ -4,7 +4,7 @@ let AWS = require('aws-sdk');
 
 export async function handler(event) {
     return new Promise((resolve, reject) => {
-        let asg: string = process.env.ASG_NAME;
+        const asg: string = process.env.ASG_NAME;
         console.log(`Searching for oldest node in ${asg}`);
         getInstances(asg)
             .then(ids => getOldestInstanceId(ids))
@@ -19,10 +19,10 @@ export async function handler(event) {
 let awsEc2 = new AWS.EC2();
 
 function getInstances(asgName: string): Promise<string[]> {
-    let autoScalingRequest = describeAsg(asgName);
+    const autoScalingRequest = describeAsg(asgName);
     return autoScalingRequest.then(
         function (data) {
-            let instances = data.AutoScalingGroups[0].Instances;
+            const instances = data.AutoScalingGroups[0].Instances;
             return instances.map(instance => instance.InstanceId);
         },
         function (error) {
@@ -34,12 +34,12 @@ function getInstances(asgName: string): Promise<string[]> {
 
 function getOldestInstanceId(instanceIds: string[]): Promise<Instance> {
     console.log(`Fetching details for: ${instanceIds}`);
-    let params = { InstanceIds: instanceIds };
-    let requestPromise = awsEc2.describeInstances(params).promise();
+    const params = { InstanceIds: instanceIds };
+    const requestPromise = awsEc2.describeInstances(params).promise();
     return requestPromise.then(
         function(data) {
-            let instanceArrays = data.Reservations.map(instanceArrays => instanceArrays.Instances);
-            let instances: Instance[] = instanceArrays.concat.apply([], instanceArrays).map(instance => new Instance(instance.InstanceId, instance.LaunchTime));
+            const instanceArrays = data.Reservations.map(instanceArrays => instanceArrays.Instances);
+            const instances: Instance[] = instanceArrays.concat.apply([], instanceArrays).map(instance => new Instance(instance.InstanceId, instance.LaunchTime));
             return findOldestInstance(instances);
         },
         function (error) {
@@ -50,8 +50,8 @@ function getOldestInstanceId(instanceIds: string[]): Promise<Instance> {
 }
 
 export function findOldestInstance(instances: Instance[]): Instance {
-    let sortedInstances: Instance[] = instances.sort(function(a,b){return a.launchTime.getTime() - b.launchTime.getTime()});
-    let oldestInstance: Instance = sortedInstances[0];
+    const sortedInstances: Instance[] = instances.sort(function(a,b){return a.launchTime.getTime() - b.launchTime.getTime()});
+    const oldestInstance: Instance = sortedInstances[0];
     console.log(`Oldest instance ${oldestInstance.id} was launched at ${oldestInstance.launchTime}`);
     return oldestInstance;
 }
