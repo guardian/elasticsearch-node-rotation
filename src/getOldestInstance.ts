@@ -49,14 +49,14 @@ function getOldestInstanceId(instanceIds: string[]): Promise<Instance> {
     )
 }
 
-export function findOldestInstance(instances: Instance[]): Instance {
+function findOldestInstance(instances: Instance[]): Instance {
     const sortedInstances: Instance[] = instances.sort(function(a,b){return a.launchTime.getTime() - b.launchTime.getTime()});
     const oldestInstance: Instance = sortedInstances[0];
     console.log(`Oldest instance ${oldestInstance.id} was launched at ${oldestInstance.launchTime}`);
     return oldestInstance;
 }
 
-export class Instance {
+class Instance {
 
     id: string;
     launchTime: Date;
@@ -67,6 +67,8 @@ export class Instance {
     }
 
 }
+
+export const _ = { findOldestInstance, Instance };
 
 
 

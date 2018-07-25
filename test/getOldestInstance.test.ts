@@ -1,4 +1,6 @@
-import {findOldestInstance, Instance} from '../src/getOldestInstance'
+import { _ } from '../src/getOldestInstance'
+
+const { findOldestInstance, Instance } = _;
 
 function createDate(date: Date, days: number): Date {
     let result = new Date(date);
