@@ -10,7 +10,7 @@ export function ssmCommand(command: string, instanceId: string): Promise<Standar
             .then((commandId: string) => getCommandResult(commandId, instanceId))
             .then((result: SSM.Types.GetCommandInvocationResult) => {
                 if (result.Status === 'Success') resolve(result.StandardOutputContent);
-                else reject(`SSM command result was: ${result.Status} / ${result.StatusDetails}`)
+                else reject(`SSM command result was: ${result.Status} / ${result.StandardErrorContent}`)
             })
             .catch(reject)
     });
