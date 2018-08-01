@@ -1,4 +1,4 @@
-import { handleAsgResponse } from '../src/addElasticsearchNode'
+import { getDesiredCapacity } from '../src/addElasticsearchNode'
 import {AutoScalingGroup, AutoScalingGroupsType} from "aws-sdk/clients/autoscaling";
 
 function asg(name: string, desiredCapacity: number): AutoScalingGroup {
@@ -14,30 +14,30 @@ function asg(name: string, desiredCapacity: number): AutoScalingGroup {
     };
 }
 
-describe("handleAsgResponse", () => {
+describe("getDesiredCapacity", () => {
     it("should throw an error if no ASG information is returned", () => {
         const mock: AutoScalingGroupsType = {
             AutoScalingGroups: []
         };
-        expect(() => { handleAsgResponse(mock); }).toThrow()
+        expect(() => { getDesiredCapacity(mock); }).toThrow()
     });
 });
 
-describe("handleAsgResponse", () => {
+describe("getDesiredCapacity", () => {
     it("should throw an error if information is returned about more than one ASG", () => {
         const mock: AutoScalingGroupsType = {
             AutoScalingGroups: [asg("asg123", 3), asg("asg124", 4)]
         }
-        expect(() => { handleAsgResponse(mock); }).toThrow()
+        expect(() => { getDesiredCapacity(mock); }).toThrow()
     });
 });
 
-describe("handleAsgResponse", () => {
+describe("getDesiredCapacity", () => {
     it("should return the desired capacity correctly if we get info about a single ASG", () => {
         const desiredCapacity = 3;
         const mock: AutoScalingGroupsType = {
             AutoScalingGroups: [asg("asg123", desiredCapacity)]
         }
-        expect(handleAsgResponse(mock)).toEqual(desiredCapacity);
+        expect(getDesiredCapacity(mock)).toEqual(desiredCapacity);
     });
 });

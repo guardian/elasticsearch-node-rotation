@@ -11,7 +11,7 @@ export async function handler(event): Promise<AddElasticsearchNodeResponse> {
         const asg: string = process.env.ASG_NAME;
 
         const currentCapacity: Promise<number> = describeAsg(asg)
-            .then(asgInfo => handleAsgResponse(asgInfo));
+            .then(getDesiredCapacity);
 
         const disableRebalancing: Promise<{}> = updateRebalancingStatus(instanceId, "none")
             .then((result: StandardOutputContent) => {
@@ -51,7 +51,7 @@ function updateRebalancingStatus(instanceId: string, status: string): Promise<St
     return ssmCommand(elasticsearchCommand, instanceId);
 }
 
-export function handleAsgResponse(asgInfo: AutoScalingGroupsType): number {
+export function getDesiredCapacity(asgInfo: AutoScalingGroupsType): number {
     const asgsInResponse = asgInfo.AutoScalingGroups.length;
     if (asgsInResponse !== 1) {
         throw `Expected information about a single ASG, but got ${asgsInResponse}`;
