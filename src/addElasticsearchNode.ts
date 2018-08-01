@@ -16,7 +16,7 @@ export async function handler(event: ClusterStatusResponse): Promise<AddElastics
         const disableRebalancing: Promise<{}> = updateRebalancingStatus(instanceId, "none")
             .then((result: StandardOutputContent) => {
                 const jsonResult = JSON.parse(result);
-                if (jsonResult.acknowledged != true) {
+                if (jsonResult.acknowledged !== true) {
                     const error = `Unexpected Elasticsearch response, we got: ${JSON.stringify(jsonResult)}`;
                     reject(error);
                 } else {
