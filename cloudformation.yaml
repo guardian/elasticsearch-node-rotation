@@ -152,6 +152,22 @@ Resources:
       Runtime: nodejs8.10
       Timeout: 300
 
+  MigrateShardsLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub enr-migrate-shards
+      Description: "Migrates shards between two nodes"
+      Handler: "migrateShards.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Key}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn: ElasticsearchClusterStatusCheckLambda
@@ -198,12 +214,17 @@ Resources:
                "ElasticsearchClusterSizeCheck": {
                  "Type": "Task",
                  "Resource": "${ElasticsearchClusterSizeCheckArn}",
-                 "End": true,
+                 "Next": "MigrateShards",
                  "Retry": [ {
                    "ErrorEquals": [ "States.ALL" ],
                    "IntervalSeconds": 10,
                    "MaxAttempts": 12
                   } ]
+               },
+               "MigrateShards": {
+                  "Type": "Task",
+                  "Resource": "${MigrateShardsArn}",
+                  "End": true
                }
              }
            }
@@ -212,4 +233,5 @@ Resources:
             StatuscheckArn: !GetAtt ElasticsearchClusterStatusCheckLambda.Arn
             AddElasticsearchNodeArn: !GetAtt AddElasticsearchNodeLambda.Arn
             ElasticsearchClusterSizeCheckArn: !GetAtt ElasticsearchClusterSizeCheckLambda.Arn
+            MigrateShardsArn: !GetAtt MigrateShardsLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
