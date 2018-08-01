@@ -13,7 +13,7 @@ export async function handler(event): Promise<AddElasticsearchNodeResponse> {
         const currentCapacity: Promise<number> = describeAsg(asg)
             .then(asgInfo => handleAsgResponse(asgInfo));
 
-        const disableRebalancing = updateRebalancingStatus(instanceId, "none")
+        const disableRebalancing: Promise<{}> = updateRebalancingStatus(instanceId, "none")
             .then((result: StandardOutputContent) => {
                 const jsonResult = JSON.parse(result);
                 if (jsonResult.acknowledged != true) {
@@ -41,7 +41,7 @@ export async function handler(event): Promise<AddElasticsearchNodeResponse> {
 }
 
 function updateRebalancingStatus(instanceId: string, status: string): Promise<StandardOutputContent> {
-    const disableRebalancingCommand: Object =
+    const disableRebalancingCommand: object =
         {
             "persistent": {
                 "cluster.routing.rebalance.enable": status
@@ -53,7 +53,7 @@ function updateRebalancingStatus(instanceId: string, status: string): Promise<St
 
 export function handleAsgResponse(asgInfo: AutoScalingGroupsType): number {
     const asgsInResponse = asgInfo.AutoScalingGroups.length;
-    if (asgsInResponse != 1) {
+    if (asgsInResponse !== 1) {
         throw `Expected information about a single ASG, but got ${asgsInResponse}`;
     } else {
         return asgInfo.AutoScalingGroups[0].DesiredCapacity;
