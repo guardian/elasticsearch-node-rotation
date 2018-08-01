@@ -3,7 +3,7 @@ import {increaseAsgSize, describeAsg} from './utils/autoscaling';
 import {StandardOutputContent} from 'aws-sdk/clients/ssm';
 import {AutoScalingGroupsType} from "aws-sdk/clients/autoscaling";
 
-export async function handler(event): Promise<AddElasticsearchNodeResponse> {
+export async function handler(event: ClusterStatusResponse): Promise<AddElasticsearchNodeResponse> {
 
     return new Promise<AddElasticsearchNodeResponse>((resolve, reject) => {
 

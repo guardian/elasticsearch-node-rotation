@@ -1,7 +1,7 @@
 import {ssmCommand} from './utils/ssmCommand';
 import {StandardOutputContent} from 'aws-sdk/clients/ssm';
 
-export async function handler(event): Promise<DefaultResponse> {
+export async function handler(event: AddElasticsearchNodeResponse): Promise<DefaultResponse> {
     return new Promise<DefaultResponse>((resolve, reject) => {
         ssmCommand('curl localhost:9200/_cluster/health', event.instanceId)
             .then((result: StandardOutputContent) => {
