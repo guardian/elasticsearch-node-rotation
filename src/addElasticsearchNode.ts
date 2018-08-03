@@ -2,12 +2,13 @@ import {ssmCommand} from './utils/ssmCommand';
 import {increaseAsgSize, describeAsg} from './utils/autoscaling';
 import {StandardOutputContent} from 'aws-sdk/clients/ssm';
 import {AutoScalingGroupsType} from "aws-sdk/clients/autoscaling";
+import {AddElasticsearchNodeResponse, ClusterStatusResponse} from './handlerResponses';
 
 export async function handler(event: ClusterStatusResponse): Promise<AddElasticsearchNodeResponse> {
 
     return new Promise<AddElasticsearchNodeResponse>((resolve, reject) => {
 
-        const instanceId: string = event.instanceId;
+        const instanceId: string = event.oldestElasticsearchNode.ec2Instance.id;
         const asg: string = process.env.ASG_NAME;
 
         const currentCapacity: Promise<number> = describeAsg(asg)
@@ -29,7 +30,10 @@ export async function handler(event: ClusterStatusResponse): Promise<AddElastics
 
         return Promise.all([currentCapacity, disableRebalancing])
             .then(results => {
-                const response: AddElasticsearchNodeResponse = {"instanceId": instanceId, "expectedClusterSize": results[0] + 1 };
+                const response: AddElasticsearchNodeResponse = {
+                    "oldestElasticsearchNode": event.oldestElasticsearchNode,
+                    "expectedClusterSize": results[0] + 1
+                };
                 resolve(response);
             })
             .catch(

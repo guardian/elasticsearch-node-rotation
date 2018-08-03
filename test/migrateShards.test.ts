@@ -1,4 +1,6 @@
 import {Move, moveInstructions} from '../src/migrateShards';
+import {ElasticsearchNode} from '../src/utils/elasticsearch';
+import {Instance} from '../src/utils/ec2Instances';
 
 describe("moveInstructions", () => {
     it("should get a list of all the shard migrations that we want ES to perform", () => {
@@ -10,7 +12,9 @@ describe("moveInstructions", () => {
             new Move(".watcher-history-6-2018.08.01", 0, "qR4vaE3zRvyjXBHvONxh_w", "1O3sqqH4R8ScTrtV9tX6fg"),
             new Move(".monitoring-alerts-6", 1, "qR4vaE3zRvyjXBHvONxh_w", "1O3sqqH4R8ScTrtV9tX6fg")
         ];
-        expect(moveInstructions(sampleRoutingTable, "qR4vaE3zRvyjXBHvONxh_w", "1O3sqqH4R8ScTrtV9tX6fg")).toEqual(expectedResponse);
+        const oldestNode = new ElasticsearchNode(new Instance("id123", new Date(), "ip1"), "qR4vaE3zRvyjXBHvONxh_w");
+        const newestNode = new ElasticsearchNode(new Instance("id124", new Date(), "ip2"), "1O3sqqH4R8ScTrtV9tX6fg");
+        expect(moveInstructions(sampleRoutingTable, oldestNode, newestNode)).toEqual(expectedResponse);
     })
 });
 

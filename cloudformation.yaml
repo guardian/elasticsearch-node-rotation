@@ -151,6 +151,9 @@ Resources:
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
+      Environment:
+        Variables:
+          ASG_NAME: !Sub ${AutoScalingGroupName}
 
   MigrateShardsLambda:
     Type: "AWS::Lambda::Function"

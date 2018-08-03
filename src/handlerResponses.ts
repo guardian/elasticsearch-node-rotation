@@ -1,11 +1,17 @@
-interface DefaultResponse {
-    instanceId: string;
+import {ElasticsearchNode} from './utils/elasticsearch'
+
+export interface DefaultResponse {
+    oldestElasticsearchNode: ElasticsearchNode;
 }
 
-interface ClusterStatusResponse extends DefaultResponse {
+export interface ClusterStatusResponse extends DefaultResponse {
     clusterStatus: string;
 }
 
-interface AddElasticsearchNodeResponse extends DefaultResponse {
+export interface AddElasticsearchNodeResponse extends DefaultResponse {
     expectedClusterSize: number;
+}
+
+export interface ClusterSizeCheckResponse extends DefaultResponse {
+    newestElasticsearchNode: ElasticsearchNode;
 }

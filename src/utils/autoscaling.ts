@@ -1,5 +1,3 @@
-import {Request} from "aws-sdk/lib/request";
-import {AWSError} from "aws-sdk/lib/error";
 import {AutoScaling} from "aws-sdk";
 
 let AWS = require('aws-sdk');
