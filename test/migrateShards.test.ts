@@ -1,6 +1,8 @@
-import {moveInstructions} from '../src/migrateShards';
+import {_} from '../src/migrateShards';
 import {ElasticsearchNode, Move} from '../src/elasticsearch/types';
 import {Instance} from '../src/aws/types';
+
+const { moveInstructions } = _;
 
 describe("moveInstructions", () => {
     it("should get a list of all the shard migrations that we want ES to perform", () => {

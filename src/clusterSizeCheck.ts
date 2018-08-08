@@ -17,18 +17,19 @@ export async function handler(event: AddElasticsearchNodeResponse): Promise<Clus
             .then((clusterStatus: ElasticsearchClusterStatus) => {
                 const nodesInCluster = clusterStatus.number_of_nodes;
                 if (nodesInCluster === event.expectedClusterSize) {
-                    newestNode.then( newestElasticsearchNode => {
-                        const response: ClusterSizeCheckResponse = {
-                            "oldestElasticsearchNode": event.oldestElasticsearchNode,
-                            "newestElasticsearchNode": newestElasticsearchNode
-                        };
-                        resolve(response);
-                    });
+                    return newestNode;
                 } else {
                     const error = `Found ${nodesInCluster} nodes but expected to find ${event.expectedClusterSize}`;
                     console.log(error);
                     reject(error)
                 }
+            })
+            .then( (newestElasticsearchNode: ElasticsearchNode) => {
+                const response: ClusterSizeCheckResponse = {
+                    "oldestElasticsearchNode": event.oldestElasticsearchNode,
+                    "newestElasticsearchNode": newestElasticsearchNode
+                };
+                resolve(response);
             })
             .catch( error => {
                 console.log(error);
