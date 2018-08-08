@@ -10,7 +10,5 @@ export async function handler(event: DefaultResponse): Promise<ClusterStatusResp
                 "clusterStatus": clusterStatus.status
             };
             return response;
-        }
-
-    );
+        })
 }

@@ -2,7 +2,7 @@ import {Instance} from '../aws/types';
 import {ElasticsearchClusterStatus, ElasticsearchNode, Move, MoveCommand, RerouteCommand} from './types';
 import {ssmCommand} from '../utils/ssmCommand';
 import {StandardOutputContent} from 'aws-sdk/clients/ssm';
-import {DefaultResponse} from "../utils/handlerResponses";
+import {DefaultResponse} from '../utils/handlerResponses';
 
 export function getClusterHealth(instanceId: string): Promise<ElasticsearchClusterStatus> {
     return ssmCommand('curl localhost:9200/_cluster/health', instanceId)
