@@ -1,11 +1,11 @@
-import {ssmCommand} from './utils/ssmCommand';
 import {increaseAsgSize, describeAsg, getDesiredCapacity} from './aws/autoscaling';
 import {StandardOutputContent} from 'aws-sdk/clients/ssm';
-import {AddElasticsearchNodeResponse, ClusterStatusResponse} from './utils/handlerResponses';
+import {AddNodeResponse, ClusterStatusResponse} from './utils/handlerResponses';
+import {updateRebalancingStatus} from './elasticsearch/elasticsearch';
 
-export async function handler(event: ClusterStatusResponse): Promise<AddElasticsearchNodeResponse> {
+export async function handler(event: ClusterStatusResponse): Promise<AddNodeResponse> {
 
-    return new Promise<AddElasticsearchNodeResponse>((resolve, reject) => {
+    return new Promise<AddNodeResponse>((resolve, reject) => {
 
         const instanceId: string = event.oldestElasticsearchNode.ec2Instance.id;
         const asg: string = process.env.ASG_NAME;
@@ -14,14 +14,8 @@ export async function handler(event: ClusterStatusResponse): Promise<AddElastics
             .then(getDesiredCapacity);
 
         const disableRebalancing: Promise<{}> = updateRebalancingStatus(instanceId, "none")
-            .then((result: StandardOutputContent) => {
-                const jsonResult = JSON.parse(result);
-                if (jsonResult.acknowledged !== true) {
-                    const error = `Unexpected Elasticsearch response, we got: ${JSON.stringify(jsonResult)}`;
-                    reject(error);
-                } else {
-                    return currentCapacity;
-                }
+            .then(() => {
+                return currentCapacity;
             })
             .then(capacity => {
                 return increaseAsgSize(asg, capacity);
@@ -29,7 +23,7 @@ export async function handler(event: ClusterStatusResponse): Promise<AddElastics
 
         return Promise.all([currentCapacity, disableRebalancing])
             .then(results => {
-                const response: AddElasticsearchNodeResponse = {
+                const response: AddNodeResponse = {
                     "oldestElasticsearchNode": event.oldestElasticsearchNode,
                     "expectedClusterSize": results[0] + 1
                 };
@@ -41,15 +35,4 @@ export async function handler(event: ClusterStatusResponse): Promise<AddElastics
 
     });
 
-}
-
-function updateRebalancingStatus(instanceId: string, status: string): Promise<StandardOutputContent> {
-    const disableRebalancingCommand: object =
-        {
-            "persistent": {
-                "cluster.routing.rebalance.enable": status
-            }
-        };
-    const elasticsearchCommand = `curl -f -v -X PUT "localhost:9200/_cluster/settings" -H 'Content-Type: application/json' -d '${JSON.stringify(disableRebalancingCommand)}'`;
-    return ssmCommand(elasticsearchCommand, instanceId);
 }

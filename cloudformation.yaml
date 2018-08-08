@@ -187,6 +187,22 @@ Resources:
       Runtime: nodejs8.10
       Timeout: 300
 
+  RemoveNodeLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub enr-remove-node
+      Description: "Removes the oldest node in the cluster (and terminates the instance) before re-enabling re-balancing"
+      Handler: "removeNode.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Key}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn:
@@ -196,6 +212,7 @@ Resources:
     - ClusterSizeCheckLambda
     - MigrateShardsLambda
     - ShardMigrationCheckLambda
+    - RemoveNodeLambda
     Properties:
       DefinitionString:
         !Sub
@@ -255,14 +272,19 @@ Resources:
                "ShardMigrationCheck": {
                   "Type": "Task",
                   "Resource": "${ShardMigrationCheckArn}",
-                  "End": true,
+                  "Next": "RemoveNode",
                   "Retry": [ {
                     "ErrorEquals": [ "States.ALL" ],
                     "IntervalSeconds": 120,
                     "MaxAttempts": 60,
                     "BackoffRate": 1.0
                    } ]
-                }
+               },
+               "RemoveNode": {
+                 "Type": "Task",
+                 "Resource": "${RemoveNodeArn}",
+                 "End": true
+              }
              }
            }
           -
@@ -272,4 +294,5 @@ Resources:
             ClusterSizeCheckArn: !GetAtt ClusterSizeCheckLambda.Arn
             MigrateShardsArn: !GetAtt MigrateShardsLambda.Arn
             ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
+            RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn

@@ -1,8 +1,8 @@
-import {ClusterStatusResponse, DefaultResponse} from './utils/handlerResponses';
+import {ClusterStatusResponse, OldestNodeResponse} from './utils/handlerResponses';
 import {getClusterHealth} from './elasticsearch/elasticsearch';
 import {ElasticsearchClusterStatus} from './elasticsearch/types';
 
-export async function handler(event: DefaultResponse): Promise<ClusterStatusResponse> {
+export async function handler(event: OldestNodeResponse): Promise<ClusterStatusResponse> {
     return getClusterHealth(event.oldestElasticsearchNode.ec2Instance.id)
         .then( (clusterStatus: ElasticsearchClusterStatus) => {
             const response: ClusterStatusResponse = {
