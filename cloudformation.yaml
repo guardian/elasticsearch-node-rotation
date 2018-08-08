@@ -82,12 +82,12 @@ Resources:
                 - lambda:InvokeFunction
                 Resource: "*"
 
-  ElasticsearchClusterStatusCheckLambda:
+  ClusterStatusCheckLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-cluster-statuscheck
+          !Sub enr-cluster-status-check
       Description: "Checks the status of an Elasticsearch cluster"
       Handler: "clusterStatusCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -98,14 +98,14 @@ Resources:
       Runtime: nodejs8.10
       Timeout: 300
 
-  GetOldestInstanceLambda:
+  GetOldestNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-get-oldest-instance
+          !Sub enr-get-oldest-node
       Description: "Finds the oldest node in an Elasticsearch cluster"
-      Handler: "getOldestInstance.handler"
+      Handler: "getOldestNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${S3Bucket}
@@ -117,14 +117,14 @@ Resources:
         Variables:
           ASG_NAME: !Sub ${AutoScalingGroupName}
 
-  AddElasticsearchNodeLambda:
+  AddNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-add-elasticsearch-node
-      Description: "Adds a new node to the Elasticsearch cluster"
-      Handler: "addElasticsearchNode.handler"
+          !Sub enr-add-node
+      Description: "Disables re-balancing before adding a new node into the Elasticsearch cluster"
+      Handler: "addNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${S3Bucket}
@@ -136,14 +136,33 @@ Resources:
         Variables:
           ASG_NAME: !Sub ${AutoScalingGroupName}
 
-  ElasticsearchClusterSizeCheckLambda:
+  ClusterSizeCheckLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-elasticsearch-cluster-size-check
+          !Sub enr-cluster-size-check
       Description: "Confirms that the Elasticsearch cluster is the expected size"
-      Handler: "elasticsearchClusterSizeCheck.handler"
+      Handler: "clusterSizeCheck.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Key}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+      Environment:
+        Variables:
+          ASG_NAME: !Sub ${AutoScalingGroupName}
+
+  MigrateShardsLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub enr-migrate-shards
+      Description: "Migrates shards between two nodes"
+      Handler: "migrateShards.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${S3Bucket}
@@ -154,23 +173,28 @@ Resources:
 
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
-    DependsOn: ElasticsearchClusterStatusCheckLambda
+    DependsOn:
+    - GetOldestNodeLambda
+    - ClusterStatusCheckLambda
+    - AddNodeLambda
+    - ClusterSizeCheckLambda
+    - MigrateShardsLambda
     Properties:
       DefinitionString:
         !Sub
           - |
            {
              "Comment": "Elasticsearch Node Rotation",
-             "StartAt": "GetOldestInstance",
+             "StartAt": "GetOldestNode",
              "States": {
-               "GetOldestInstance": {
+               "GetOldestNode": {
                  "Type": "Task",
-                 "Resource": "${GetOldestInstanceArn}",
+                 "Resource": "${GetOldestNodeArn}",
                  "Next": "CheckClusterStatus"
                },
                "CheckClusterStatus": {
                  "Type": "Task",
-                 "Resource": "${StatuscheckArn}",
+                 "Resource": "${ClusterStatusCheckArn}",
                  "Next": "StatusIsGreen"
                },
                "StatusIsGreen": {
@@ -184,32 +208,38 @@ Resources:
                      "Next": "FailState"
                    }
                  ],
-                 "Default": "AddNewElasticsearchNode"
+                 "Default": "AddNode"
                },
                "FailState": {
                  "Type": "Fail",
                  "Cause": "Unhealthy Cluster!"
                },
-               "AddNewElasticsearchNode": {
+               "AddNode": {
                  "Type": "Task",
-                 "Resource": "${AddElasticsearchNodeArn}",
-                 "Next": "ElasticsearchClusterSizeCheck"
+                 "Resource": "${AddNodeArn}",
+                 "Next": "ClusterSizeCheck"
                },
-               "ElasticsearchClusterSizeCheck": {
+               "ClusterSizeCheck": {
                  "Type": "Task",
-                 "Resource": "${ElasticsearchClusterSizeCheckArn}",
-                 "End": true,
+                 "Resource": "${ClusterSizeCheckArn}",
+                 "Next": "MigrateShards",
                  "Retry": [ {
                    "ErrorEquals": [ "States.ALL" ],
                    "IntervalSeconds": 10,
                    "MaxAttempts": 12
                   } ]
+               },
+               "MigrateShards": {
+                  "Type": "Task",
+                  "Resource": "${MigrateShardsArn}",
+                  "End": true
                }
              }
            }
           -
-            GetOldestInstanceArn: !GetAtt GetOldestInstanceLambda.Arn
-            StatuscheckArn: !GetAtt ElasticsearchClusterStatusCheckLambda.Arn
-            AddElasticsearchNodeArn: !GetAtt AddElasticsearchNodeLambda.Arn
-            ElasticsearchClusterSizeCheckArn: !GetAtt ElasticsearchClusterSizeCheckLambda.Arn
+            GetOldestNodeArn: !GetAtt GetOldestNodeLambda.Arn
+            ClusterStatusCheckArn: !GetAtt ClusterStatusCheckLambda.Arn
+            AddNodeArn: !GetAtt AddNodeLambda.Arn
+            ClusterSizeCheckArn: !GetAtt ClusterSizeCheckLambda.Arn
+            MigrateShardsArn: !GetAtt MigrateShardsLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
