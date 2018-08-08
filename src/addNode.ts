@@ -1,8 +1,7 @@
 import {ssmCommand} from './utils/ssmCommand';
-import {increaseAsgSize, describeAsg} from './utils/autoscaling';
+import {increaseAsgSize, describeAsg, getDesiredCapacity} from './aws/autoscaling';
 import {StandardOutputContent} from 'aws-sdk/clients/ssm';
-import {AutoScalingGroupsType} from "aws-sdk/clients/autoscaling";
-import {AddElasticsearchNodeResponse, ClusterStatusResponse} from './handlerResponses';
+import {AddElasticsearchNodeResponse, ClusterStatusResponse} from './utils/handlerResponses';
 
 export async function handler(event: ClusterStatusResponse): Promise<AddElasticsearchNodeResponse> {
 
@@ -53,13 +52,4 @@ function updateRebalancingStatus(instanceId: string, status: string): Promise<St
         };
     const elasticsearchCommand = `curl -f -v -X PUT "localhost:9200/_cluster/settings" -H 'Content-Type: application/json' -d '${JSON.stringify(disableRebalancingCommand)}'`;
     return ssmCommand(elasticsearchCommand, instanceId);
-}
-
-export function getDesiredCapacity(asgInfo: AutoScalingGroupsType): number {
-    const asgsInResponse = asgInfo.AutoScalingGroups.length;
-    if (asgsInResponse !== 1) {
-        throw `Expected information about a single ASG, but got ${asgsInResponse}`;
-    } else {
-        return asgInfo.AutoScalingGroups[0].DesiredCapacity;
-    }
 }

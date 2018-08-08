@@ -1,21 +1,8 @@
 import {describeAsg} from './autoscaling'
+import {Instance} from './types'
 
 let AWS = require('aws-sdk');
 let awsEc2 = new AWS.EC2();
-
-export class Instance {
-
-    id: string;
-    launchTime: Date;
-    privateIp: string;
-
-    constructor(instanceId: string, launchTime: Date, privateIp: string) {
-        this.id = instanceId;
-        this.launchTime = launchTime;
-        this.privateIp = privateIp;
-    }
-
-}
 
 type InstanceFilter = (instances: Instance[]) => Instance;
 

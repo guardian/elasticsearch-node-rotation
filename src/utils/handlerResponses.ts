@@ -1,4 +1,4 @@
-import {ElasticsearchNode} from './utils/elasticsearch'
+import {ElasticsearchNode} from '../elasticsearch/types'
 
 export interface DefaultResponse {
     oldestElasticsearchNode: ElasticsearchNode;

@@ -1,15 +1,16 @@
-import {ssmCommand} from './utils/ssmCommand';
-import {StandardOutputContent} from 'aws-sdk/clients/ssm';
-import {ClusterStatusResponse, DefaultResponse} from './handlerResponses';
+import {ClusterStatusResponse, DefaultResponse} from './utils/handlerResponses';
+import {getClusterHealth} from './elasticsearch/elasticsearch';
+import {ElasticsearchClusterStatus} from './elasticsearch/types';
 
 export async function handler(event: DefaultResponse): Promise<ClusterStatusResponse> {
-    return ssmCommand('curl localhost:9200/_cluster/health', event.oldestElasticsearchNode.ec2Instance.id)
-        .then((result: StandardOutputContent) => {
-            const json = JSON.parse(result);
+    return getClusterHealth(event.oldestElasticsearchNode.ec2Instance.id)
+        .then( (clusterStatus: ElasticsearchClusterStatus) => {
             const response: ClusterStatusResponse = {
                 "oldestElasticsearchNode": event.oldestElasticsearchNode,
-                "clusterStatus": json.status
+                "clusterStatus": clusterStatus.status
             };
             return response;
-        })
+        }
+
+    );
 }

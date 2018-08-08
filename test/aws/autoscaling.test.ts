@@ -1,4 +1,4 @@
-import {getDesiredCapacity} from '../src/addElasticsearchNode'
+import {getDesiredCapacity} from '../../src/aws/autoscaling'
 import {AutoScalingGroup, AutoScalingGroupsType} from 'aws-sdk/clients/autoscaling';
 
 function asg(name: string, desiredCapacity: number): AutoScalingGroup {

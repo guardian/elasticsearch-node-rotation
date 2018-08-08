@@ -1,6 +1,7 @@
-import {DefaultResponse} from './handlerResponses';
-import {getInstances, getSpecificInstance, Instance} from "./utils/ec2Instances";
-import {getElasticsearchNode} from './utils/elasticsearch';
+import {DefaultResponse} from './utils/handlerResponses';
+import {getInstances, getSpecificInstance} from './aws/ec2Instances';
+import {getElasticsearchNode} from './elasticsearch/elasticsearch';
+import {Instance} from './aws/types';
 
 export async function handler(event): Promise<DefaultResponse> {
     return new Promise<DefaultResponse>((resolve, reject) => {

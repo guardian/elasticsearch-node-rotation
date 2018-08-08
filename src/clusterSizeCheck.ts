@@ -1,8 +1,8 @@
-import {ssmCommand} from './utils/ssmCommand';
-import {StandardOutputContent} from 'aws-sdk/clients/ssm';
-import {AddElasticsearchNodeResponse, ClusterSizeCheckResponse} from './handlerResponses';
-import {ElasticsearchNode, getElasticsearchNode} from './utils/elasticsearch';
-import {getInstances, getSpecificInstance, Instance} from './utils/ec2Instances';
+import {AddElasticsearchNodeResponse, ClusterSizeCheckResponse} from './utils/handlerResponses';
+import {getClusterHealth, getElasticsearchNode} from './elasticsearch/elasticsearch';
+import {getInstances, getSpecificInstance} from './aws/ec2Instances';
+import {ElasticsearchClusterStatus, ElasticsearchNode} from './elasticsearch/types';
+import {Instance} from './aws/types';
 
 export async function handler(event: AddElasticsearchNodeResponse): Promise<ClusterSizeCheckResponse> {
 
@@ -13,10 +13,9 @@ export async function handler(event: AddElasticsearchNodeResponse): Promise<Clus
         .then(getElasticsearchNode);
 
     return new Promise<ClusterSizeCheckResponse>((resolve, reject) => {
-        ssmCommand('curl localhost:9200/_cluster/health', event.oldestElasticsearchNode.ec2Instance.id)
-            .then((result: StandardOutputContent) => {
-                const json = JSON.parse(result);
-                const nodesInCluster = json.number_of_nodes;
+        getClusterHealth(event.oldestElasticsearchNode.ec2Instance.id)
+            .then((clusterStatus: ElasticsearchClusterStatus) => {
+                const nodesInCluster = clusterStatus.number_of_nodes;
                 if (nodesInCluster === event.expectedClusterSize) {
                     newestNode.then( newestElasticsearchNode => {
                         const response: ClusterSizeCheckResponse = {

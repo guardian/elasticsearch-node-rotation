@@ -1,4 +1,5 @@
-import {AutoScaling} from "aws-sdk";
+import {AutoScaling} from 'aws-sdk';
+import {AutoScalingGroupsType} from 'aws-sdk/clients/autoscaling';
 
 let AWS = require('aws-sdk');
 let awsAutoscaling = new AWS.AutoScaling();
@@ -25,4 +26,13 @@ export function terminateOldestInstance(instanceToTerminate: string): Promise<Au
 export function describeAsg(asgName: string): Promise<AutoScaling.Types.AutoScalingGroupsType> {
     let params = { AutoScalingGroupNames: [ asgName ] };
     return awsAutoscaling.describeAutoScalingGroups(params).promise();
+}
+
+export function getDesiredCapacity(asgInfo: AutoScalingGroupsType): number {
+    const asgsInResponse = asgInfo.AutoScalingGroups.length;
+    if (asgsInResponse !== 1) {
+        throw `Expected information about a single ASG, but got ${asgsInResponse}`;
+    } else {
+        return asgInfo.AutoScalingGroups[0].DesiredCapacity;
+    }
 }

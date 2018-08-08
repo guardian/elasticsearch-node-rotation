@@ -1,5 +1,5 @@
-import {Instance} from '../src/utils/ec2Instances'
-import {findOldestInstance} from '../src/getOldestInstance'
+import {Instance} from '../src/aws/types'
+import {findOldestInstance} from '../src/getOldestNode'
 
 function createDate(date: Date, days: number): Date {
     let result = new Date(date);
