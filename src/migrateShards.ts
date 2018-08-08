@@ -10,7 +10,7 @@ export async function handler(event: ClusterSizeCheckResponse): Promise<DefaultR
         .then(moves => migrateShards(moves, oldestElasticsearchNode));
 }
 
-export function moveInstructions(response, oldNode: ElasticsearchNode, newNode: ElasticsearchNode): Move[] {
+function moveInstructions(response, oldNode: ElasticsearchNode, newNode: ElasticsearchNode): Move[] {
     const indices = response.routing_table.indices;
     const indexNames: string[] = Object.keys(indices);
     const shards = indexNames.map(index => indices[index].shards);
@@ -27,4 +27,5 @@ function findShardCopiesOnNode(shardCopies: ShardCopy[], elasticsearchNode: Elas
     return shardCopies.filter(copy => copy.node === elasticsearchNode.nodeId);
 }
 
+export const _ = { moveInstructions };
 
