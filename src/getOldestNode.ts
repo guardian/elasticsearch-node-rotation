@@ -15,7 +15,10 @@ export async function handler(event): Promise<OldestNodeResponse> {
                     "oldestElasticsearchNode": node
                 })
             })
-            .catch(error => reject(error))
+            .catch(error => {
+                console.log(`Failed to identify the oldest node in the cluster due to: ${error}`);
+                reject(error)
+            })
     })
 
 }

@@ -1,5 +1,4 @@
 import {increaseAsgSize, describeAsg, getDesiredCapacity} from './aws/autoscaling';
-import {StandardOutputContent} from 'aws-sdk/clients/ssm';
 import {AddNodeResponse, ClusterStatusResponse} from './utils/handlerResponses';
 import {updateRebalancingStatus} from './elasticsearch/elasticsearch';
 
@@ -29,9 +28,10 @@ export async function handler(event: ClusterStatusResponse): Promise<AddNodeResp
                 };
                 resolve(response);
             })
-            .catch(
-                error => reject(error)
-            )
+            .catch(error => {
+                console.log(`Failed to add a new node due to: ${error}`);
+                reject(error)
+            })
 
     });
 

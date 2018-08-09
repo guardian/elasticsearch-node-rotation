@@ -9,12 +9,9 @@ export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNo
         getShardInfo(oldestElasticsearchNode.ec2Instance.id)
             .then(response => moveInstructions(response, oldestElasticsearchNode, newestElasticsearchNode))
             .then(moves => migrateShards(moves, oldestElasticsearchNode))
-            .then(result => {
-                console.log(result);
-                resolve(event);
-            })
+            .then(() => resolve(event))
             .catch(error => {
-                console.log(`Failed to perform shard migration due to ${error}`)
+                console.log(`Failed to perform shard migration due to: ${error}`);
                 reject(error);
             });
     })

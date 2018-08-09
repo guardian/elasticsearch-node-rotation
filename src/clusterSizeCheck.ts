@@ -32,7 +32,7 @@ export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResp
                 resolve(response);
             })
             .catch( error => {
-                console.log(error);
+                console.log(`Failed to get cluster status due to: ${error}`);
                 reject(error)
             })
     })
