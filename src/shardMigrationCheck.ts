@@ -1,6 +1,6 @@
 import {OldAndNewNodeResponse} from './utils/handlerResponses';
 import {getClusterHealth, getDocuments} from './elasticsearch/elasticsearch';
-import {ElasticsearchClusterStatus, Documents} from "./elasticsearch/types";
+import {ElasticsearchClusterStatus, Documents} from './elasticsearch/types';
 
 export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNodeResponse> {
     return new Promise<OldAndNewNodeResponse>((resolve, reject) => {
