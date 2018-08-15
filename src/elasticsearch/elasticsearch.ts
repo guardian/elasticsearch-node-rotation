@@ -81,7 +81,7 @@ export function migrateShards(moves: Move[], oldestElasticsearchNode: Elasticsea
 
 }
 
-function successfulAction(rawResponse: StandardOutputContent): Boolean {
+function successfulAction(rawResponse: StandardOutputContent): boolean {
     const jsonResult = JSON.parse(rawResponse);
     return jsonResult.acknowledged === true;
 }
