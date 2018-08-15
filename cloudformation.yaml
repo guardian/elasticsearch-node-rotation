@@ -171,6 +171,38 @@ Resources:
       Runtime: nodejs8.10
       Timeout: 300
 
+  ShardMigrationCheckLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub enr-shard-migration-check
+      Description: "Confirms that all shards have been migrated (and that cluster is green) or exits with an error"
+      Handler: "shardMigrationCheck.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Key}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+
+  RemoveNodeLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+          !Sub enr-remove-node
+      Description: "Removes the oldest node in the cluster (and terminates the instance) before re-enabling re-balancing"
+      Handler: "removeNode.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${S3Bucket}
+        S3Key: !Sub ${S3Key}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn:
@@ -179,6 +211,8 @@ Resources:
     - AddNodeLambda
     - ClusterSizeCheckLambda
     - MigrateShardsLambda
+    - ShardMigrationCheckLambda
+    - RemoveNodeLambda
     Properties:
       DefinitionString:
         !Sub
@@ -225,15 +259,32 @@ Resources:
                  "Next": "MigrateShards",
                  "Retry": [ {
                    "ErrorEquals": [ "States.ALL" ],
-                   "IntervalSeconds": 10,
-                   "MaxAttempts": 12
+                   "IntervalSeconds": 30,
+                   "MaxAttempts": 20,
+                   "BackoffRate": 1.0
                   } ]
                },
                "MigrateShards": {
                   "Type": "Task",
                   "Resource": "${MigrateShardsArn}",
-                  "End": true
-               }
+                  "Next": "ShardMigrationCheck"
+               },
+               "ShardMigrationCheck": {
+                  "Type": "Task",
+                  "Resource": "${ShardMigrationCheckArn}",
+                  "Next": "RemoveNode",
+                  "Retry": [ {
+                    "ErrorEquals": [ "States.ALL" ],
+                    "IntervalSeconds": 120,
+                    "MaxAttempts": 60,
+                    "BackoffRate": 1.0
+                   } ]
+               },
+               "RemoveNode": {
+                 "Type": "Task",
+                 "Resource": "${RemoveNodeArn}",
+                 "End": true
+              }
              }
            }
           -
@@ -242,4 +293,6 @@ Resources:
             AddNodeArn: !GetAtt AddNodeLambda.Arn
             ClusterSizeCheckArn: !GetAtt ClusterSizeCheckLambda.Arn
             MigrateShardsArn: !GetAtt MigrateShardsLambda.Arn
+            ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
+            RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn

@@ -1,10 +1,10 @@
-import {DefaultResponse} from './utils/handlerResponses';
+import {OldestNodeResponse} from './utils/handlerResponses';
 import {getInstances, getSpecificInstance} from './aws/ec2Instances';
 import {getElasticsearchNode} from './elasticsearch/elasticsearch';
 import {Instance} from './aws/types';
 
-export async function handler(event): Promise<DefaultResponse> {
-    return new Promise<DefaultResponse>((resolve, reject) => {
+export async function handler(event): Promise<OldestNodeResponse> {
+    return new Promise<OldestNodeResponse>((resolve, reject) => {
         const asg: string = process.env.ASG_NAME;
         console.log(`Searching for oldest node in ${asg}`);
         getInstances(asg)
@@ -15,7 +15,10 @@ export async function handler(event): Promise<DefaultResponse> {
                     "oldestElasticsearchNode": node
                 })
             })
-            .catch(error => reject(error))
+            .catch(error => {
+                console.log(`Failed to identify the oldest node in the cluster due to: ${error}`);
+                reject(error)
+            })
     })
 
 }

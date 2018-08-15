@@ -1,13 +1,20 @@
-import {ClusterSizeCheckResponse, DefaultResponse} from './utils/handlerResponses';
+import {OldAndNewNodeResponse} from './utils/handlerResponses';
 import {getShardInfo, migrateShards} from './elasticsearch/elasticsearch';
 import {ElasticsearchNode, Move, ShardCopy} from './elasticsearch/types'
 
-export async function handler(event: ClusterSizeCheckResponse): Promise<DefaultResponse> {
+export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNodeResponse> {
     const oldestElasticsearchNode: ElasticsearchNode = event.oldestElasticsearchNode;
     const newestElasticsearchNode: ElasticsearchNode = event.newestElasticsearchNode;
-    return getShardInfo(oldestElasticsearchNode.ec2Instance.id)
-        .then(response => moveInstructions(response, oldestElasticsearchNode, newestElasticsearchNode))
-        .then(moves => migrateShards(moves, oldestElasticsearchNode));
+    return new Promise<OldAndNewNodeResponse>((resolve, reject) => {
+        getShardInfo(oldestElasticsearchNode.ec2Instance.id)
+            .then(response => moveInstructions(response, oldestElasticsearchNode, newestElasticsearchNode))
+            .then(moves => migrateShards(moves, oldestElasticsearchNode))
+            .then(() => resolve(event))
+            .catch(error => {
+                console.log(`Failed to perform shard migration due to: ${error}`);
+                reject(error);
+            });
+    })
 }
 
 function moveInstructions(response, oldNode: ElasticsearchNode, newNode: ElasticsearchNode): Move[] {

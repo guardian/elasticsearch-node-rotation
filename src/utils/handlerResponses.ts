@@ -1,17 +1,17 @@
 import {ElasticsearchNode} from '../elasticsearch/types'
 
-export interface DefaultResponse {
+export interface OldestNodeResponse {
     oldestElasticsearchNode: ElasticsearchNode;
 }
 
-export interface ClusterStatusResponse extends DefaultResponse {
+export interface OldAndNewNodeResponse extends OldestNodeResponse {
+    newestElasticsearchNode: ElasticsearchNode;
+}
+
+export interface ClusterStatusResponse extends OldestNodeResponse {
     clusterStatus: string;
 }
 
-export interface AddElasticsearchNodeResponse extends DefaultResponse {
+export interface AddNodeResponse extends OldestNodeResponse {
     expectedClusterSize: number;
-}
-
-export interface ClusterSizeCheckResponse extends DefaultResponse {
-    newestElasticsearchNode: ElasticsearchNode;
 }
