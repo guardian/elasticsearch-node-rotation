@@ -8,7 +8,7 @@ export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNo
     const oldestInstanceId: string = event.oldestElasticsearchNode.ec2Instance.id;
 
     return new Promise<OldAndNewNodeResponse>((resolve, reject) => {
-        ssmCommand("systemctl stop elasticsearch", oldestInstanceId)
+        ssmCommand("systemctl stop elasticsearch", oldestInstanceId, false)
                 .then(() => terminateOldestInstance(oldestInstanceId))
                 .then(() => updateRebalancingStatus(event.newestElasticsearchNode.ec2Instance.id, "all"))
                 .then(() => resolve(event))
