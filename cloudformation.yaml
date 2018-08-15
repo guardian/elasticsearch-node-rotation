@@ -87,7 +87,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-cluster-status-check
+          !Sub enr-cluster-status-check-${Stage}
       Description: "Checks the status of an Elasticsearch cluster"
       Handler: "clusterStatusCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -103,7 +103,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-get-oldest-node
+          !Sub enr-get-oldest-node-${Stage}
       Description: "Finds the oldest node in an Elasticsearch cluster"
       Handler: "getOldestNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -122,7 +122,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-add-node
+          !Sub enr-add-node-${Stage}
       Description: "Disables re-balancing before adding a new node into the Elasticsearch cluster"
       Handler: "addNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -141,7 +141,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-cluster-size-check
+          !Sub enr-cluster-size-check-${Stage}
       Description: "Confirms that the Elasticsearch cluster is the expected size"
       Handler: "clusterSizeCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -160,7 +160,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-migrate-shards
+          !Sub enr-migrate-shards-${Stage}
       Description: "Migrates shards between two nodes"
       Handler: "migrateShards.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -176,7 +176,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-shard-migration-check
+          !Sub enr-shard-migration-check-${Stage}
       Description: "Confirms that all shards have been migrated (and that cluster is green) or exits with an error"
       Handler: "shardMigrationCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -192,7 +192,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-remove-node
+          !Sub enr-remove-node-${Stage}
       Description: "Removes the oldest node in the cluster (and terminates the instance) before re-enabling re-balancing"
       Handler: "removeNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
