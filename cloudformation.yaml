@@ -124,6 +124,9 @@ Resources:
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   GetOldestNodeLambda:
     Type: "AWS::Lambda::Function"
