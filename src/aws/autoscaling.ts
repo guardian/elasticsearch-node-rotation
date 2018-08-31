@@ -1,26 +1,18 @@
 import {AutoScaling} from 'aws-sdk';
-import {AutoScalingGroupsType} from 'aws-sdk/clients/autoscaling';
+import {AutoScalingGroupsType, DetachInstancesAnswer} from 'aws-sdk/clients/autoscaling';
+import {Instance} from './types';
 
 const AWS = require('aws-sdk');
 const awsAutoscaling = new AWS.AutoScaling();
 
-export function increaseAsgSize(asgName: string, originalAsgSize: number): Promise<{}> {
-    const newDesiredCapacity = originalAsgSize + 1;
-    console.log(`Increasing the size of ${asgName} from ${originalAsgSize} to ${newDesiredCapacity}`);
+export function detachInstance(instance: Instance, asgName: string): Promise<DetachInstancesAnswer> {
+    console.log(`Detaching ${instance.id} from ${asgName}. This should also bring a new instance into the ASG`);
     const params = {
+        InstanceIds: [ instance.id ],
         AutoScalingGroupName: asgName,
-        DesiredCapacity: newDesiredCapacity
+        ShouldDecrementDesiredCapacity: false
     };
-    return awsAutoscaling.setDesiredCapacity(params).promise();
-}
-
-export function terminateOldestInstance(instanceToTerminate: string): Promise<AutoScaling.Types.ActivityType> {
-    console.log(`Terminating instance id: ${instanceToTerminate} and decreasing desired ASG capacity`);
-    const params = {
-        InstanceId: instanceToTerminate,
-        ShouldDecrementDesiredCapacity: true
-    };
-    return awsAutoscaling.terminateInstanceInAutoScalingGroup(params).promise();
+    return awsAutoscaling.detachInstances(params).promise()
 }
 
 export function describeAsg(asgName: string): Promise<AutoScaling.Types.AutoScalingGroupsType> {
