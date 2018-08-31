@@ -18,6 +18,9 @@ Parameters:
   SsmOutputBucketName:
     Type: String
     Description: SSM needs a bucket to output results to if the result is large
+  SNSTopicForAlerts:
+    Type: String
+    Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt
 
 Resources:
 
@@ -253,6 +256,8 @@ Resources:
     - ShardMigrationCheckLambda
     - RemoveNodeLambda
     Properties:
+      StateMachineName:
+        !Sub Elasticsearch-Node-Rotation-${AutoScalingGroupName}
       DefinitionString:
         !Sub
           - |
@@ -335,3 +340,24 @@ Resources:
             ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
+
+  ExecutionFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicForAlerts}
+      AlarmName: !Sub Failed to complete node rotation for ${Stage} Elasticsearch Cluster
+      AlarmDescription: !Sub
+        - Elasticsearch Node Rotation failed - please see Step Function execution history for ${StepFunctionName}
+        - { StepFunctionName: !GetAtt NodeRotationStepFunction.Name }
+      MetricName: ExecutionsFailed
+      Namespace: AWS/States
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref NodeRotationStepFunction
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      Period: 60
+      EvaluationPeriods: 1
+      Statistic: Sum
+    DependsOn: NodeRotationStepFunction
