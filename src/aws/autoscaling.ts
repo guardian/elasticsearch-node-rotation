@@ -6,7 +6,7 @@ const AWS = require('aws-sdk');
 const awsAutoscaling = new AWS.AutoScaling();
 
 export function detachInstance(instance: Instance, asgName: string): Promise<DetachInstancesAnswer> {
-    console.log(`Detaching ${instance.id} from ${asgName}. This should also bring a new node into the ASG`);
+    console.log(`Detaching ${instance.id} from ${asgName}. This should also bring a new instance into the ASG`);
     const params = {
         InstanceIds: [ instance.id ],
         AutoScalingGroupName: asgName,
