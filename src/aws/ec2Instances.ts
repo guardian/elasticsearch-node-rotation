@@ -1,7 +1,7 @@
 import {describeAsg} from './autoscaling'
 import {Instance} from './types'
 import {AutoScalingGroupsType} from 'aws-sdk/clients/autoscaling';
-import {DescribeInstancesResult} from 'aws-sdk/clients/ec2';
+import {DescribeInstancesResult, TerminateInstancesResult} from 'aws-sdk/clients/ec2';
 
 const AWS = require('aws-sdk');
 const awsEc2 = new AWS.EC2();
@@ -20,6 +20,12 @@ export function getInstances(asgName: string): Promise<string[]> {
             return error;
         }
     )
+}
+
+export function terminateInstance(instance: Instance): Promise<TerminateInstancesResult> {
+    console.log(`Terminating instance ${instance.id}`);
+    const params = { InstanceIds: [ instance.id ] };
+    return awsEc2.terminateInstances(params).promise()
 }
 
 export function getSpecificInstance(instanceIds: string[], instanceFilter: InstanceFilter): Promise<Instance> {
