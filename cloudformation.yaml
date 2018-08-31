@@ -3,15 +3,21 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Step Function for rotating Elasticsearch nodes"
 
 Parameters:
-  S3Bucket:
+  Stage:
+    Type: String
+    Description: Stage name
+  DeployS3Bucket:
     Type: String
     Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist
-  S3Key:
+  DeployS3Key:
     Type: String
     Description: Key for .zip file used by lambda functions e.g. <stack>/<stage>/elasticsearch-node-rotation/elasticsearch-node-rotation.zip
   AutoScalingGroupName:
     Type: String
     Description: The name of the auto-scaling group which contains the Elasticsearch nodes
+  SsmOutputBucketName:
+    Type: String
+    Description: SSM needs a bucket to output results to if the result is large
 
 Resources:
 
@@ -60,6 +66,24 @@ Resources:
                 - ssm:SendCommand
                 - ssm:GetCommandInvocation
                 Resource: "*"
+        - PolicyName: SsmS3Policy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                - s3:*
+                Resource:
+                - !Sub arn:aws:s3::*:${SsmOutputBucketName}/*
+                - !Sub arn:aws:s3::*:${SsmOutputBucketName}
+
+  SsmOutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SsmOutputBucketName
+      LifecycleConfiguration:
+        Rules:
+        - ExpirationInDays: 1
+          Status: Enabled
 
   StatesExecutionRole:
     Type: "AWS::IAM::Role"
@@ -87,121 +111,136 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-cluster-status-check
+          !Sub enr-cluster-status-check-${Stage}
       Description: "Checks the status of an Elasticsearch cluster"
       Handler: "clusterStatusCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
-        S3Bucket: !Sub ${S3Bucket}
-        S3Key: !Sub ${S3Key}
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   GetOldestNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-get-oldest-node
+          !Sub enr-get-oldest-node-${Stage}
       Description: "Finds the oldest node in an Elasticsearch cluster"
       Handler: "getOldestNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
-        S3Bucket: !Sub ${S3Bucket}
-        S3Key: !Sub ${S3Key}
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Sub ${AutoScalingGroupName}
+          ASG_NAME: !Ref AutoScalingGroupName
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   AddNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-add-node
+          !Sub enr-add-node-${Stage}
       Description: "Disables re-balancing before adding a new node into the Elasticsearch cluster"
       Handler: "addNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
-        S3Bucket: !Sub ${S3Bucket}
-        S3Key: !Sub ${S3Key}
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Sub ${AutoScalingGroupName}
+          ASG_NAME: !Ref AutoScalingGroupName
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   ClusterSizeCheckLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-cluster-size-check
+          !Sub enr-cluster-size-check-${Stage}
       Description: "Confirms that the Elasticsearch cluster is the expected size"
       Handler: "clusterSizeCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
-        S3Bucket: !Sub ${S3Bucket}
-        S3Key: !Sub ${S3Key}
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Sub ${AutoScalingGroupName}
+          ASG_NAME: !Ref AutoScalingGroupName
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   MigrateShardsLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-migrate-shards
+          !Sub enr-migrate-shards-${Stage}
       Description: "Migrates shards between two nodes"
       Handler: "migrateShards.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
-        S3Bucket: !Sub ${S3Bucket}
-        S3Key: !Sub ${S3Key}
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   ShardMigrationCheckLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-shard-migration-check
+          !Sub enr-shard-migration-check-${Stage}
       Description: "Confirms that all shards have been migrated (and that cluster is green) or exits with an error"
       Handler: "shardMigrationCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
-        S3Bucket: !Sub ${S3Bucket}
-        S3Key: !Sub ${S3Key}
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   RemoveNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName:
-          !Sub enr-remove-node
+          !Sub enr-remove-node-${Stage}
       Description: "Removes the oldest node in the cluster (and terminates the instance) before re-enabling re-balancing"
       Handler: "removeNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
-        S3Bucket: !Sub ${S3Bucket}
-        S3Key: !Sub ${S3Key}
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
       Runtime: nodejs8.10
       Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"

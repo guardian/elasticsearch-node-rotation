@@ -1,12 +1,12 @@
 import {OldAndNewNodeResponse} from './utils/handlerResponses';
-import {getShardInfo, migrateShards} from './elasticsearch/elasticsearch';
-import {ElasticsearchNode, Move, ShardCopy} from './elasticsearch/types'
+import {getRoutingTable, migrateShards} from './elasticsearch/elasticsearch';
+import {ElasticsearchNode, IndexShards, Move, RoutingTable, Shard, ShardCopy} from './elasticsearch/types'
 
 export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNodeResponse> {
     const oldestElasticsearchNode: ElasticsearchNode = event.oldestElasticsearchNode;
     const newestElasticsearchNode: ElasticsearchNode = event.newestElasticsearchNode;
     return new Promise<OldAndNewNodeResponse>((resolve, reject) => {
-        getShardInfo(oldestElasticsearchNode.ec2Instance.id)
+        getRoutingTable(oldestElasticsearchNode.ec2Instance.id)
             .then(response => moveInstructions(response, oldestElasticsearchNode, newestElasticsearchNode))
             .then(moves => migrateShards(moves, oldestElasticsearchNode))
             .then(() => resolve(event))
@@ -17,14 +17,16 @@ export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNo
     })
 }
 
-function moveInstructions(response, oldNode: ElasticsearchNode, newNode: ElasticsearchNode): Move[] {
-    const indices = response.routing_table.indices;
-    const indexNames: string[] = Object.keys(indices);
-    const shards = indexNames.map(index => indices[index].shards);
-    const shardNumbers = Object.keys(shards);
-    const shardArrays = shardNumbers.map(shardNumber => shards[shardNumber][0]);
-    const allShardCopies: ShardCopy[] = shardArrays.concat.apply([], shardArrays);
+const flatMap = (f,xs) => xs.map(f).reduce((x,y) => x.concat(y), []);
+
+function moveInstructions(routingTable: RoutingTable, oldNode: ElasticsearchNode, newNode: ElasticsearchNode): Move[] {
+    const allShardCopies: ShardCopy[] = flatMap((indexShards: IndexShards) =>
+        flatMap((shard: Shard) => shard.shardCopies, indexShards.shards),
+        routingTable.indexShards
+    );
+
     const shardCopiesToMove: ShardCopy[] = findShardCopiesOnNode(allShardCopies, oldNode);
+
     const moveCommands: Move[] = shardCopiesToMove.map(copy => new Move(copy.index, copy.shard, oldNode.nodeId, newNode.nodeId));
     console.log(`Constructed the following move commands: ${JSON.stringify(moveCommands)}`);
     return moveCommands;

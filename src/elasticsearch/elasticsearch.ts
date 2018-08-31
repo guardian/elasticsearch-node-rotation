@@ -1,11 +1,19 @@
 import {Instance} from '../aws/types';
-import {Documents, ElasticsearchClusterStatus, ElasticsearchNode, Move, MoveCommand, NodeStats, RerouteCommand} from './types';
+import {
+    Documents,
+    ElasticsearchClusterStatus,
+    ElasticsearchNode,
+    Move,
+    MoveCommand,
+    NodeStats,
+    RerouteCommand,
+    RoutingTable
+} from './types';
 import {ssmCommand} from '../utils/ssmCommand';
-import {StandardOutputContent} from 'aws-sdk/clients/ssm';
 
 export function getClusterHealth(instanceId: string): Promise<ElasticsearchClusterStatus> {
     return ssmCommand('curl localhost:9200/_cluster/health', instanceId)
-        .then((result: StandardOutputContent) => {
+        .then((result: string) => {
             const clusterStatus: ElasticsearchClusterStatus = JSON.parse(result);
             return clusterStatus;
         })
@@ -14,7 +22,7 @@ export function getClusterHealth(instanceId: string): Promise<ElasticsearchClust
 export function getElasticsearchNode(instance: Instance): Promise<ElasticsearchNode> {
     console.log(`Searching for Elasticsearch node with private ip: ${instance.privateIp}`);
     return ssmCommand(`curl localhost:9200/_nodes/${instance.privateIp}`, instance.id)
-        .then((result: StandardOutputContent) => {
+        .then((result: string) => {
             const json = JSON.parse(result);
             if (json._nodes.total === 1) {
                 const nodeId: string = Object.keys(json.nodes)[0];
@@ -25,9 +33,10 @@ export function getElasticsearchNode(instance: Instance): Promise<ElasticsearchN
         })
 }
 
-export function getShardInfo(instanceId: string): Promise<object> {
+export function getRoutingTable(instanceId: string): Promise<RoutingTable> {
     return ssmCommand(`curl localhost:9200/_cluster/state/routing_table`, instanceId)
-        .then(JSON.parse);
+        .then(JSON.parse)
+        .then(json => new RoutingTable(json));
 }
 
 export function getDocuments(node: ElasticsearchNode): Promise<Documents> {
@@ -45,9 +54,9 @@ export function updateRebalancingStatus(instanceId: string, status: string): Pro
                 "cluster.routing.rebalance.enable": status
             }
         };
-    const elasticsearchCommand = `curl -f -v -X PUT "localhost:9200/_cluster/settings" -H 'Content-Type: application/json' -d '${JSON.stringify(disableRebalancingCommand)}'`;
+    const elasticsearchCommand = `curl -X PUT "localhost:9200/_cluster/settings" -H 'Content-Type: application/json' -d '${JSON.stringify(disableRebalancingCommand)}'`;
     return ssmCommand(elasticsearchCommand, instanceId)
-        .then((rawResponse: StandardOutputContent) => {
+        .then((rawResponse: string) => {
             if (!successfulAction(rawResponse)) {
                 throw `unexpected Elasticsearch response when attempting to update re-balancing status, we got: ${rawResponse}`;
             } else {
@@ -68,9 +77,9 @@ export function migrateShards(moves: Move[], oldestElasticsearchNode: Elasticsea
         commands
     };
     console.log(`Re-route command will be: ${JSON.stringify(rerouteCommand)}`);
-    const elasticsearchCommand = `curl -f -v -X POST "localhost:9200/_cluster/reroute" -H 'Content-Type: application/json' -d '${JSON.stringify(rerouteCommand)}'`;
+    const elasticsearchCommand = `curl -X POST "localhost:9200/_cluster/reroute" -H 'Content-Type: application/json' -d '${JSON.stringify(rerouteCommand)}'`;
     return ssmCommand(elasticsearchCommand, oldestElasticsearchNode.ec2Instance.id)
-        .then((rawResponse: StandardOutputContent) => {
+        .then((rawResponse: string) => {
             if (!successfulAction(rawResponse)) {
                 throw `unexpected Elasticsearch response when attempting to migrate shards, we got: ${rawResponse}`;
             } else {
@@ -81,7 +90,7 @@ export function migrateShards(moves: Move[], oldestElasticsearchNode: Elasticsea
 
 }
 
-function successfulAction(rawResponse: StandardOutputContent): boolean {
+function successfulAction(rawResponse: string): boolean {
     const jsonResult = JSON.parse(rawResponse);
     return jsonResult.acknowledged === true;
 }
