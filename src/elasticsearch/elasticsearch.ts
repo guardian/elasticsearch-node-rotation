@@ -3,11 +3,7 @@ import {
     Documents,
     ElasticsearchClusterStatus,
     ElasticsearchNode,
-    Move,
-    MoveCommand,
     NodeStats,
-    RerouteCommand,
-    RoutingTable
 } from './types';
 import {ssmCommand} from '../utils/ssmCommand';
 
@@ -31,12 +27,6 @@ export function getElasticsearchNode(instance: Instance): Promise<ElasticsearchN
                 throw `expected information about a single node, but got: ${JSON.stringify(json)}`;
             }
         })
-}
-
-export function getRoutingTable(instanceId: string): Promise<RoutingTable> {
-    return ssmCommand(`curl localhost:9200/_cluster/state/routing_table`, instanceId)
-        .then(JSON.parse)
-        .then(json => new RoutingTable(json));
 }
 
 export function getDocuments(node: ElasticsearchNode): Promise<Documents> {
@@ -66,28 +56,23 @@ export function updateRebalancingStatus(instanceId: string, status: string): Pro
         })
 }
 
-export function migrateShards(moves: Move[], oldestElasticsearchNode: ElasticsearchNode): Promise<boolean> {
-
-    function buildMoveCommand(move: Move): MoveCommand {
-        return { "move": move };
-    }
-
-    const commands: MoveCommand[] = moves.map(buildMoveCommand);
-    const rerouteCommand: RerouteCommand = {
-        commands
+export function excludeFromAllocation(ip: string, instanceId: string): Promise<boolean> {
+    const setting = {
+        "persistent" : {
+            "cluster.routing.allocation.exclude._ip" : ip
+        }
     };
-    console.log(`Re-route command will be: ${JSON.stringify(rerouteCommand)}`);
-    const elasticsearchCommand = `curl -X POST "localhost:9200/_cluster/reroute" -H 'Content-Type: application/json' -d '${JSON.stringify(rerouteCommand)}'`;
-    return ssmCommand(elasticsearchCommand, oldestElasticsearchNode.ec2Instance.id)
+    const command = `curl -X PUT "localhost:9200/_cluster/settings" -H 'Content-Type: application/json' -d '${JSON.stringify(setting)}'`;
+
+    return ssmCommand(command, instanceId)
         .then((rawResponse: string) => {
             if (!successfulAction(rawResponse)) {
-                throw `unexpected Elasticsearch response when attempting to migrate shards, we got: ${rawResponse}`;
+                throw `Unexpected Elasticsearch response when attempting to exclude ${ip} from shard allocation, got: ${rawResponse}`;
             } else {
-                console.log(`Successfully began migrating shards off ES node: ${JSON.stringify(oldestElasticsearchNode)}`);
+                console.log(`Successfully excluded ${ip} from shard allocation`);
                 return true;
             }
-        })
-
+        });
 }
 
 function successfulAction(rawResponse: string): boolean {
