@@ -79,6 +79,15 @@ Resources:
                 - !Sub arn:aws:s3::*:${SsmOutputBucketName}/*
                 - !Sub arn:aws:s3::*:${SsmOutputBucketName}
 
+  SsmOutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SsmOutputBucketName
+      LifecycleConfiguration:
+        Rules:
+        - ExpirationInDays: 1
+          Status: Enabled
+
   StatesExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -99,15 +108,6 @@ Resources:
                 Action:
                 - lambda:InvokeFunction
                 Resource: "*"
-
-  SsmOutputBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref SsmOutputBucketName
-      LifecycleConfiguration:
-        Rules:
-        - ExpirationInDays: 1
-          Status: Enabled
 
   ClusterStatusCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -145,7 +145,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Sub ${AutoScalingGroupName}
+          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   AddNodeLambda:
@@ -165,7 +165,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Sub ${AutoScalingGroupName}
+          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   ClusterSizeCheckLambda:
@@ -185,7 +185,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Sub ${AutoScalingGroupName}
+          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   MigrateShardsLambda:

@@ -1,5 +1,5 @@
 import {_} from '../src/migrateShards';
-import {ElasticsearchNode, Move} from '../src/elasticsearch/types';
+import {ElasticsearchNode, Move, RoutingTable} from '../src/elasticsearch/types';
 import {Instance} from '../src/aws/types';
 
 const { moveInstructions } = _;
@@ -16,7 +16,8 @@ describe("moveInstructions", () => {
         ];
         const oldestNode = new ElasticsearchNode(new Instance("id123", new Date(), "ip1"), "qR4vaE3zRvyjXBHvONxh_w");
         const newestNode = new ElasticsearchNode(new Instance("id124", new Date(), "ip2"), "1O3sqqH4R8ScTrtV9tX6fg");
-        expect(moveInstructions(sampleRoutingTable, oldestNode, newestNode)).toEqual(expectedResponse);
+        const routingTable = new RoutingTable(sampleRoutingTable);
+        expect(moveInstructions(routingTable, oldestNode, newestNode)).toEqual(expectedResponse);
     })
 });
 

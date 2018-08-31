@@ -1,7 +1,13 @@
 {
   "name": "elasticsearch-node-rotation",
+  "isAwsLambda": true,
+  "cloudformation": false,
+  "projectName": "tools::elasticsearch-node-rotation",
+  "buildDir": "./target",
+  "riffraffFile": "./riff-raff.yaml",
   "dependencies": {
     "aws-sdk": "^2.264.1",
+    "node-riffraff-artefact": "^2.0.1",
     "typescript": "2.8.3"
   },
   "devDependencies": {
@@ -11,8 +17,9 @@
     "ts-jest": "^23.0.1"
   },
   "scripts": {
-    "compile": "tsc",
-    "build": "cd dist && zip -r elasticsearch-node-rotation *",
+    "clean": "rm -rf target",
+    "build": "tsc",
+    "package": "ARTEFACT_PATH=$PWD/target VERBOSE=true riffraff-artefact",
     "test": "jest"
   }
 }
