@@ -52,11 +52,11 @@ Resources:
                 Action:
                 - autoscaling:DescribeAutoScalingGroups
                 - ec2:DescribeInstances
+                - ec2:TerminateInstances
                 Resource: "*"
               - Effect: Allow
                 Action:
-                - autoscaling:SetDesiredCapacity
-                - autoscaling:TerminateInstanceInAutoScalingGroup
+                - autoscaling:DetachInstances
                 Resource: !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${AutoScalingGroupName}
         - PolicyName: ElasticsearchAdminSsmPolicy
           PolicyDocument:
