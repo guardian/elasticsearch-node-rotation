@@ -126,6 +126,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
+          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   GetOldestNodeLambda:
