@@ -2,9 +2,9 @@
   "name": "elasticsearch-node-rotation",
   "isAwsLambda": true,
   "cloudformation": false,
-  "projectName": "tools::elasticsearch-node-rotation",
+  "projectName": "@@PREFIX::elasticsearch-node-rotation",
   "buildDir": "./target",
-  "riffraffFile": "./riff-raff.yaml",
+  "riffraffFile": "riff-raff.yaml",
   "dependencies": {
     "aws-sdk": "^2.264.1",
     "node-riffraff-artefact": "^2.0.1",
