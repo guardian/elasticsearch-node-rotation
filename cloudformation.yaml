@@ -21,6 +21,9 @@ Parameters:
   SNSTopicForAlerts:
     Type: String
     Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt
+  ClusterName:
+    Type: String
+    Description: The name of the elasticsearch cluster, for context in alerts
 
 Resources:
 
@@ -258,7 +261,7 @@ Resources:
     - RemoveNodeLambda
     Properties:
       StateMachineName:
-        !Sub Elasticsearch-Node-Rotation-${AutoScalingGroupName}
+        !Sub Elasticsearch-Node-Rotation-${ClusterName}
       DefinitionString:
         !Sub
           - |

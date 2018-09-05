@@ -40,7 +40,7 @@ export function getDocuments(node: ElasticsearchNode): Promise<Documents> {
 export function updateRebalancingStatus(instanceId: string, status: string): Promise<boolean> {
     const disableRebalancingCommand: object =
         {
-            "persistent": {
+            "transient": {
                 "cluster.routing.rebalance.enable": status
             }
         };
@@ -58,7 +58,7 @@ export function updateRebalancingStatus(instanceId: string, status: string): Pro
 
 export function excludeFromAllocation(ip: string, instanceId: string): Promise<boolean> {
     const setting = {
-        "persistent" : {
+        "transient" : {
             "cluster.routing.allocation.exclude._ip" : ip
         }
     };
