@@ -1,7 +1,8 @@
-import {describeAsg, getDesiredCapacity, detachInstance} from './aws/autoscaling';
+import {detachInstance} from './aws/autoscaling';
 import {AddNodeResponse, ClusterStatusResponse} from './utils/handlerResponses';
-import {updateRebalancingStatus} from './elasticsearch/elasticsearch';
+import {getClusterHealth, updateRebalancingStatus} from './elasticsearch/elasticsearch';
 import {Instance} from './aws/types';
+import {ElasticsearchClusterStatus} from './elasticsearch/types';
 
 export async function handler(event: ClusterStatusResponse): Promise<AddNodeResponse> {
 
@@ -11,12 +12,11 @@ export async function handler(event: ClusterStatusResponse): Promise<AddNodeResp
     return new Promise<AddNodeResponse>((resolve, reject) => {
         updateRebalancingStatus(oldestInstance.id, "none")
             .then(() => detachInstance(oldestInstance, asg))
-            .then(() => describeAsg(asg))
-            .then(getDesiredCapacity)
-            .then((currentCapacity: number) => {
+            .then(() => getClusterHealth(oldestInstance.id))
+            .then((clusterStatus: ElasticsearchClusterStatus) => {
                 const response: AddNodeResponse = {
                     "oldestElasticsearchNode": event.oldestElasticsearchNode,
-                    "expectedClusterSize": currentCapacity + 1
+                    "expectedClusterSize": clusterStatus.number_of_nodes + 1
                 };
                 resolve(response);
             })
