@@ -17,7 +17,7 @@ Parameters:
     Description: The name of the auto-scaling group which contains the Elasticsearch nodes
   SsmOutputBucketName:
     Type: String
-    Description: SSM needs a bucket to output results to if the result is large
+    Description: SSM needs a bucket to output results to if the result is large. The instances which receive SSM commands must have PutObject permissions for this bucket.
   SNSTopicForAlerts:
     Type: String
     Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt
@@ -76,11 +76,13 @@ Resources:
           PolicyDocument:
             Statement:
               - Effect: Allow
-                Action:
-                - s3:*
+                Action: s3:ListBucket
                 Resource:
-                - !Sub arn:aws:s3::*:${SsmOutputBucketName}/*
-                - !Sub arn:aws:s3::*:${SsmOutputBucketName}
+                - !Sub arn:aws:s3:::${SsmOutputBucketName}
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                - !Sub arn:aws:s3:::${SsmOutputBucketName}/*
 
   SsmOutputBucket:
     Type: AWS::S3::Bucket
