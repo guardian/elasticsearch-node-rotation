@@ -1,0 +1,18 @@
+stacks: [deploy]
+regions: [eu-west-1]
+
+deployments:
+  elasticsearch-node-rotation:
+    type: aws-lambda
+    parameters:
+      prefixStack: false
+      bucket: deploy-tools-dist
+      fileName: elasticsearch-node-rotation.zip
+      functionNames:
+        - enr-cluster-status-check-
+        - enr-get-oldest-node-
+        - enr-add-node-
+        - enr-cluster-size-check-
+        - enr-migrate-shards-
+        - enr-shard-migration-check-
+        - enr-remove-node-
