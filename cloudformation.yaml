@@ -24,6 +24,9 @@ Parameters:
   ClusterName:
     Type: String
     Description: The name of the elasticsearch cluster, for context in alerts
+  CronExpression:
+    Type: String
+    Description: Cron expression which determines when each node rotation is scheduled.
 
 Resources:
 
@@ -104,6 +107,28 @@ Resources:
                 Action:
                 - lambda:InvokeFunction
                 Resource: "*"
+
+  TriggerExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Principal:
+            Service:
+            - events.amazonaws.com
+          Action: sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: StatesExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                - states:StartExecution
+                Resource: !Ref NodeRotationStepFunction
 
   ClusterStatusCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -337,6 +362,20 @@ Resources:
             ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
+
+  NodeRotationSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub node-rotation-schedule-${ClusterName}
+      ScheduleExpression: !Ref CronExpression
+      State: ENABLED
+      Targets:
+      - Arn: !Ref NodeRotationStepFunction
+        Id: !GetAtt NodeRotationStepFunction.Name
+        RoleArn: !GetAtt TriggerExecutionRole.Arn
+    DependsOn:
+    - NodeRotationStepFunction
+    - TriggerExecutionRole
 
   ExecutionFailureAlarm:
     Type: AWS::CloudWatch::Alarm
