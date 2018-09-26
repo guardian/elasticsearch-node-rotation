@@ -1,4 +1,4 @@
-import {OldAndNewNodeResponse} from './utils/handlerResponses';
+import {OldAndNewNodeResponse} from './utils/handlerInputs';
 import {
     excludeFromAllocation,
     updateRebalancingStatus

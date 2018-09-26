@@ -122,7 +122,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   GetOldestNodeLambda:
@@ -142,7 +141,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   AddNodeLambda:
@@ -162,7 +160,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   ClusterSizeCheckLambda:
@@ -182,7 +179,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   MigrateShardsLambda:

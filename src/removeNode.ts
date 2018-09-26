@@ -1,4 +1,4 @@
-import {OldAndNewNodeResponse} from './utils/handlerResponses';
+import {OldAndNewNodeResponse} from './utils/handlerInputs';
 import {ssmCommand} from './utils/ssmCommand';
 import {terminateInstance} from "./aws/ec2Instances";
 import {Instance} from './aws/types';
