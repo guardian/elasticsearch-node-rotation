@@ -5,25 +5,31 @@ Description: "Step Function for rotating Elasticsearch nodes"
 Parameters:
   Stage:
     Type: String
-    Description: Stage name
+    Description: Stage name.
   DeployS3Bucket:
     Type: String
-    Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist
+    Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist.
   DeployS3Key:
     Type: String
-    Description: Key for .zip file used by lambda functions e.g. <stack>/<stage>/elasticsearch-node-rotation/elasticsearch-node-rotation.zip
-  AutoScalingGroupName:
+    Description: Key for .zip file used by lambda functions e.g. <stack>/<stage>/elasticsearch-node-rotation/elasticsearch-node-rotation.zip.
+  DataNodeAsg:
     Type: String
-    Description: The name of the auto-scaling group which contains the Elasticsearch nodes
+    Description: The name of the auto-scaling group which contains the Elasticsearch data nodes (which may also be masters).
+  DedicatedMasterAsg:
+    Type: String
+    Description: The name of the auto-scaling group which contains dedicated Elasticsearch master nodes. Leave this field empty if the Elasticsearch cluster does not have dedicated master nodes.
   SsmOutputBucketName:
     Type: String
     Description: Bucket used to store SSM command output. This bucket must already exist and the instances which receive SSM commands must have PutObject permissions for this bucket.
   SNSTopicForAlerts:
     Type: String
-    Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt
+    Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt.
   ClusterName:
     Type: String
-    Description: The name of the elasticsearch cluster, for context in alerts
+    Description: The name of the elasticsearch cluster, for context in alerts.
+
+Conditions:
+  HasDedicatedMasters: !Not [!Equals [!Ref DedicatedMasterAsg, '']]
 
 Resources:
 
@@ -63,7 +69,17 @@ Resources:
               - Effect: Allow
                 Action:
                 - autoscaling:DetachInstances
-                Resource: !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${AutoScalingGroupName}
+                Resource:
+                  - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DataNodeAsg}
+              - !If
+                  - HasDedicatedMasters
+                  -
+                    Effect: Allow
+                    Action:
+                    - autoscaling:DetachInstances
+                    Resource:
+                    - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DedicatedMasterAsg}
+                  - !Ref AWS::NoValue
         - PolicyName: ElasticsearchAdminSsmPolicy
           PolicyDocument:
             Statement:
@@ -122,7 +138,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   GetOldestNodeLambda:
@@ -142,7 +157,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   AddNodeLambda:
@@ -162,7 +176,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   ClusterSizeCheckLambda:
@@ -182,7 +195,6 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          ASG_NAME: !Ref AutoScalingGroupName
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   MigrateShardsLambda:
