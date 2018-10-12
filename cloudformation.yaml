@@ -397,6 +397,7 @@ Resources:
     - TriggerExecutionRole
 
   MasterNodeRotationSchedule:
+    Condition: HasDedicatedMasters
     Type: AWS::Events::Rule
     Properties:
       Name: !Sub master-node-rotation-schedule-${ClusterName}
