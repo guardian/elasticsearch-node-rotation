@@ -1,6 +1,10 @@
 import {ElasticsearchNode} from '../elasticsearch/types'
 
-export interface OldestNodeResponse {
+export interface StateMachineInput {
+    asgName: string
+}
+
+export interface OldestNodeResponse extends StateMachineInput {
     oldestElasticsearchNode: ElasticsearchNode;
 }
 

@@ -1,4 +1,4 @@
-import {AddNodeResponse, OldAndNewNodeResponse} from './utils/handlerResponses';
+import {AddNodeResponse, OldAndNewNodeResponse} from './utils/handlerInputs';
 import {getClusterHealth, getElasticsearchNode} from './elasticsearch/elasticsearch';
 import {getInstances, getSpecificInstance} from './aws/ec2Instances';
 import {ElasticsearchClusterStatus, ElasticsearchNode} from './elasticsearch/types';
@@ -6,7 +6,7 @@ import {Instance} from './aws/types';
 
 export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResponse> {
 
-    const asg: string = process.env.ASG_NAME;
+    const asg: string = event.asgName;
 
     const newestNode: Promise<ElasticsearchNode> = getInstances(asg)
         .then(instances => getSpecificInstance(instances, findNewestInstance))
@@ -26,6 +26,7 @@ export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResp
             })
             .then( (newestElasticsearchNode: ElasticsearchNode) => {
                 const response: OldAndNewNodeResponse = {
+                    "asgName": asg,
                     "oldestElasticsearchNode": event.oldestElasticsearchNode,
                     "newestElasticsearchNode": newestElasticsearchNode
                 };

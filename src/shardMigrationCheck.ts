@@ -1,4 +1,4 @@
-import {OldAndNewNodeResponse} from './utils/handlerResponses';
+import {OldAndNewNodeResponse} from './utils/handlerInputs';
 import {getClusterHealth, getDocuments} from './elasticsearch/elasticsearch';
 import {ElasticsearchClusterStatus, Documents} from './elasticsearch/types';
 
