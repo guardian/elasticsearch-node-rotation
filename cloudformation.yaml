@@ -378,18 +378,36 @@ Resources:
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
 
-  NodeRotationSchedule:
+  DataNodeRotationSchedule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub node-rotation-schedule-${ClusterName}
-      ScheduleExpression: !Ref CronExpression
+      Name: !Sub data-node-rotation-schedule-${ClusterName}
+      ScheduleExpression: !Ref DataNodeRotationCronExpression
       State: ENABLED
       Targets:
       - Arn: !Ref NodeRotationStepFunction
         Id: !GetAtt NodeRotationStepFunction.Name
         Input: !Sub |
           {
-            "asgName": "${AutoScalingGroupName}"
+            "asgName": "${DataNodeAsg}"
+          }
+        RoleArn: !GetAtt TriggerExecutionRole.Arn
+    DependsOn:
+    - NodeRotationStepFunction
+    - TriggerExecutionRole
+
+  MasterNodeRotationSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub master-node-rotation-schedule-${ClusterName}
+      ScheduleExpression: !Ref MasterNodeRotationCronExpression
+      State: ENABLED
+      Targets:
+      - Arn: !Ref NodeRotationStepFunction
+        Id: !GetAtt NodeRotationStepFunction.Name
+        Input: !Sub |
+          {
+            "asgName": "${DedicatedMasterAsg}"
           }
         RoleArn: !GetAtt TriggerExecutionRole.Arn
     DependsOn:
