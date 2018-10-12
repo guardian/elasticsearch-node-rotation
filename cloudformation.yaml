@@ -18,6 +18,12 @@ Parameters:
   DedicatedMasterAsg:
     Type: String
     Description: The name of the auto-scaling group which contains dedicated Elasticsearch master nodes. Leave this field empty if the Elasticsearch cluster does not have dedicated master nodes.
+  DataNodeRotationCronExpression:
+    Type: String
+    Description: Cron expression which determines when data node rotations are scheduled.
+  MasterNodeRotationCronExpression:
+    Type: String
+    Description: Cron expression which determines when master node rotations are scheduled. Only required if the Elasticsearch cluster has dedicated master nodes.
   SsmOutputBucketName:
     Type: String
     Description: Bucket used to store SSM command output. This bucket must already exist and the instances which receive SSM commands must have PutObject permissions for this bucket.
@@ -120,6 +126,28 @@ Resources:
                 Action:
                 - lambda:InvokeFunction
                 Resource: "*"
+
+  TriggerExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Principal:
+            Service:
+            - events.amazonaws.com
+          Action: sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: StatesExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                - states:StartExecution
+                Resource: !Ref NodeRotationStepFunction
 
   ClusterStatusCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -329,7 +357,7 @@ Resources:
                   "Retry": [ {
                     "ErrorEquals": [ "States.ALL" ],
                     "IntervalSeconds": 120,
-                    "MaxAttempts": 60,
+                    "MaxAttempts": 120,
                     "BackoffRate": 1.0
                    } ]
                },
@@ -349,6 +377,24 @@ Resources:
             ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
+
+  NodeRotationSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub node-rotation-schedule-${ClusterName}
+      ScheduleExpression: !Ref CronExpression
+      State: ENABLED
+      Targets:
+      - Arn: !Ref NodeRotationStepFunction
+        Id: !GetAtt NodeRotationStepFunction.Name
+        Input: !Sub |
+          {
+            "asgName": "${AutoScalingGroupName}"
+          }
+        RoleArn: !GetAtt TriggerExecutionRole.Arn
+    DependsOn:
+    - NodeRotationStepFunction
+    - TriggerExecutionRole
 
   ExecutionFailureAlarm:
     Type: AWS::CloudWatch::Alarm

@@ -1,17 +1,18 @@
-import {OldestNodeResponse} from './utils/handlerResponses';
+import {OldestNodeResponse} from './utils/handlerInputs';
 import {getInstances, getSpecificInstance} from './aws/ec2Instances';
 import {getElasticsearchNode} from './elasticsearch/elasticsearch';
 import {Instance} from './aws/types';
 
 export async function handler(event): Promise<OldestNodeResponse> {
     return new Promise<OldestNodeResponse>((resolve, reject) => {
-        const asg: string = process.env.ASG_NAME;
+        const asg: string = event.asgName;
         console.log(`Searching for oldest node in ${asg}`);
         getInstances(asg)
             .then(instances => getSpecificInstance(instances, findOldestInstance))
             .then(getElasticsearchNode)
             .then(node => {
                 resolve({
+                    asgName: asg,
                     "oldestElasticsearchNode": node
                 })
             })
