@@ -368,6 +368,10 @@ Resources:
       Targets:
       - Arn: !Ref NodeRotationStepFunction
         Id: !GetAtt NodeRotationStepFunction.Name
+        Input: !Sub |
+          {
+            "asgName": "${AutoScalingGroupName}"
+          }
         RoleArn: !GetAtt TriggerExecutionRole.Arn
     DependsOn:
     - NodeRotationStepFunction
