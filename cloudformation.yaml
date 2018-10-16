@@ -105,6 +105,12 @@ Resources:
                 Action: s3:GetObject
                 Resource:
                 - !Sub arn:aws:s3:::${SsmOutputBucketName}/*
+        - PolicyName: QueryStepFunctionHistory
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: states:ListExecutions
+                Resource: "*"
 
   StatesExecutionRole:
     Type: "AWS::IAM::Role"
@@ -386,12 +392,16 @@ Resources:
       State: ENABLED
       Targets:
       - Arn: !Ref NodeRotationStepFunction
-        Id: !GetAtt NodeRotationStepFunction.Name
-        Input: !Sub |
-          {
-            "asgName": "${DataNodeAsg}"
-          }
         RoleArn: !GetAtt TriggerExecutionRole.Arn
+        Id: !GetAtt NodeRotationStepFunction.Name
+        Input: !Sub
+          - |
+            {
+              "asgName": "${DataNodeAsg}",
+              "stepFunctionArn": "${StepFunctionArn}"
+            }
+          -
+           StepFunctionArn: !Ref NodeRotationStepFunction
     DependsOn:
     - NodeRotationStepFunction
     - TriggerExecutionRole
@@ -405,12 +415,16 @@ Resources:
       State: ENABLED
       Targets:
       - Arn: !Ref NodeRotationStepFunction
-        Id: !GetAtt NodeRotationStepFunction.Name
-        Input: !Sub |
-          {
-            "asgName": "${DedicatedMasterAsg}"
-          }
         RoleArn: !GetAtt TriggerExecutionRole.Arn
+        Id: !GetAtt NodeRotationStepFunction.Name
+        Input: !Sub
+          - |
+            {
+              "asgName": "${DedicatedMasterAsg}",
+              "stepFunctionArn": "${StepFunctionArn}"
+            }
+          -
+            StepFunctionArn: !Ref NodeRotationStepFunction
     DependsOn:
     - NodeRotationStepFunction
     - TriggerExecutionRole
