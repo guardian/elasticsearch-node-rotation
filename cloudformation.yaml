@@ -367,12 +367,16 @@ Resources:
       State: ENABLED
       Targets:
       - Arn: !Ref NodeRotationStepFunction
-        Id: !GetAtt NodeRotationStepFunction.Name
-        Input: !Sub |
-          {
-            "asgName": "${AutoScalingGroupName}"
-          }
         RoleArn: !GetAtt TriggerExecutionRole.Arn
+        Id: !GetAtt NodeRotationStepFunction.Name
+        Input: !Sub
+          - |
+            {
+              "asgName": "${AutoScalingGroupName}",
+              "stepFunctionArn": "${StepFunctionArn}"
+            }
+          -
+            StepFunctionArn: !Ref NodeRotationStepFunction
     DependsOn:
     - NodeRotationStepFunction
     - TriggerExecutionRole
