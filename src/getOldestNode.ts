@@ -1,19 +1,31 @@
-import {OldestNodeResponse} from './utils/handlerInputs';
+import { OldestNodeResponse, StateMachineInput } from './utils/handlerInputs';
 import {getInstances, getSpecificInstance} from './aws/ec2Instances';
 import {getElasticsearchNode} from './elasticsearch/elasticsearch';
 import {Instance} from './aws/types';
+import { totalRunningExecutions } from './aws/stepFunctions';
 
-export async function handler(event): Promise<OldestNodeResponse> {
+export async function handler(event: StateMachineInput): Promise<OldestNodeResponse> {
     return new Promise<OldestNodeResponse>((resolve, reject) => {
         const asg: string = event.asgName;
-        console.log(`Searching for oldest node in ${asg}`);
-        getInstances(asg)
-            .then(instances => getSpecificInstance(instances, findOldestInstance))
+        const arn: string = event.stepFunctionArn;
+        Promise.all([
+            totalRunningExecutions(arn),
+            getInstances(asg)
+        ])
+            .then(([runningExecutions, instances]: [number, string[]]) => {
+                if (runningExecutions !== 1) {
+                    const error = `Failing Step Function execution; expected to find one running execution (this one!) but there were ${runningExecutions}.`;
+                    console.log(error);
+                    reject(error)
+                }
+                console.log(`Searching for oldest node in ${asg}`);
+                return getSpecificInstance(instances, findOldestInstance);
+            })
             .then(getElasticsearchNode)
             .then(node => {
                 resolve({
                     asgName: asg,
-                    "oldestElasticsearchNode": node
+                    oldestElasticsearchNode: node
                 })
             })
             .catch(error => {

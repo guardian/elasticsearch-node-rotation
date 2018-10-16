@@ -1,10 +1,14 @@
 import {ElasticsearchNode} from '../elasticsearch/types'
 
-export interface StateMachineInput {
-    asgName: string
+export interface StateMachineInput extends AsgInput {
+    stepFunctionArn: string;
 }
 
-export interface OldestNodeResponse extends StateMachineInput {
+export interface AsgInput {
+    asgName: string;
+}
+
+export interface OldestNodeResponse extends AsgInput {
     oldestElasticsearchNode: ElasticsearchNode;
 }
 
