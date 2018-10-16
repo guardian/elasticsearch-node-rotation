@@ -86,6 +86,12 @@ Resources:
                 Action: s3:GetObject
                 Resource:
                 - !Sub arn:aws:s3:::${SsmOutputBucketName}/*
+        - PolicyName: QueryStepFunctionHistory
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: states:ListExecutions
+                Resource: "*"
 
   StatesExecutionRole:
     Type: "AWS::IAM::Role"
