@@ -2,7 +2,13 @@ stacks: [deploy]
 regions: [eu-west-1]
 
 deployments:
+  cloudformation:
+    type: cloud-formation
+    app: elk-data-node-rotation
+    parameters:
+      templatePath: cloudformation/cloudformation.yaml
   elasticsearch-node-rotation:
+    dependencies: [cloudformation]
     type: aws-lambda
     parameters:
       prefixStack: false
