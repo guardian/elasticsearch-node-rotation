@@ -5,28 +5,37 @@ Description: "Step Function for rotating Elasticsearch nodes"
 Parameters:
   Stage:
     Type: String
-    Description: Stage name
+    Description: Stage name.
   DeployS3Bucket:
     Type: String
-    Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist
+    Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist.
   DeployS3Key:
     Type: String
-    Description: Key for .zip file used by lambda functions e.g. <stack>/<stage>/elasticsearch-node-rotation/elasticsearch-node-rotation.zip
-  AutoScalingGroupName:
+    Description: Key for .zip file used by lambda functions e.g. <stack>/<stage>/elasticsearch-node-rotation/elasticsearch-node-rotation.zip.
+  DataNodeAsg:
     Type: String
-    Description: The name of the auto-scaling group which contains the Elasticsearch nodes
+    Description: The name of the auto-scaling group which contains the Elasticsearch data nodes (which may also be masters).
+  DedicatedMasterAsg:
+    Type: String
+    Description: The name of the auto-scaling group which contains dedicated Elasticsearch master nodes. Leave this field empty if the Elasticsearch cluster does not have dedicated master nodes.
+  DataNodeRotationCronExpression:
+    Type: String
+    Description: Cron expression which determines when data node rotations are scheduled.
+  MasterNodeRotationCronExpression:
+    Type: String
+    Description: Cron expression which determines when master node rotations are scheduled. Only required if the Elasticsearch cluster has dedicated master nodes.
   SsmOutputBucketName:
     Type: String
     Description: Bucket used to store SSM command output. This bucket must already exist and the instances which receive SSM commands must have PutObject permissions for this bucket.
   SNSTopicForAlerts:
     Type: String
-    Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt
+    Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt.
   ClusterName:
     Type: String
-    Description: The name of the elasticsearch cluster, for context in alerts
-  CronExpression:
-    Type: String
-    Description: Cron expression which determines when each node rotation is scheduled.
+    Description: The name of the elasticsearch cluster, for context in alerts.
+
+Conditions:
+  HasDedicatedMasters: !Not [!Equals [!Ref DedicatedMasterAsg, '']]
 
 Resources:
 
@@ -66,7 +75,17 @@ Resources:
               - Effect: Allow
                 Action:
                 - autoscaling:DetachInstances
-                Resource: !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${AutoScalingGroupName}
+                Resource:
+                  - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DataNodeAsg}
+              - !If
+                  - HasDedicatedMasters
+                  -
+                    Effect: Allow
+                    Action:
+                    - autoscaling:DetachInstances
+                    Resource:
+                    - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DedicatedMasterAsg}
+                  - !Ref AWS::NoValue
         - PolicyName: ElasticsearchAdminSsmPolicy
           PolicyDocument:
             Statement:
@@ -365,11 +384,11 @@ Resources:
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
 
-  NodeRotationSchedule:
+  DataNodeRotationSchedule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub node-rotation-schedule-${ClusterName}
-      ScheduleExpression: !Ref CronExpression
+      Name: !Sub data-node-rotation-schedule-${ClusterName}
+      ScheduleExpression: !Ref DataNodeRotationCronExpression
       State: ENABLED
       Targets:
       - Arn: !Ref NodeRotationStepFunction
@@ -378,7 +397,30 @@ Resources:
         Input: !Sub
           - |
             {
-              "asgName": "${AutoScalingGroupName}",
+              "asgName": "${DataNodeAsg}",
+              "stepFunctionArn": "${StepFunctionArn}"
+            }
+          -
+           StepFunctionArn: !Ref NodeRotationStepFunction
+    DependsOn:
+    - NodeRotationStepFunction
+    - TriggerExecutionRole
+
+  MasterNodeRotationSchedule:
+    Condition: HasDedicatedMasters
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub master-node-rotation-schedule-${ClusterName}
+      ScheduleExpression: !Ref MasterNodeRotationCronExpression
+      State: ENABLED
+      Targets:
+      - Arn: !Ref NodeRotationStepFunction
+        RoleArn: !GetAtt TriggerExecutionRole.Arn
+        Id: !GetAtt NodeRotationStepFunction.Name
+        Input: !Sub
+          - |
+            {
+              "asgName": "${DedicatedMasterAsg}",
               "stepFunctionArn": "${StepFunctionArn}"
             }
           -
