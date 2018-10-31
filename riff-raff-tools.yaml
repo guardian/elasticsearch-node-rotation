@@ -8,7 +8,7 @@ deployments:
     parameters:
       templatePath: cloudformation/cloudformation.yaml
   elasticsearch-node-rotation:
-    dependencies: [cloudformation]
+    dependencies: [elasticsearch-node-rotation-cloudformation]
     type: aws-lambda
     parameters:
       prefixStack: false
