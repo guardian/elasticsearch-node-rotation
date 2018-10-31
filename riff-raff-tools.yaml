@@ -2,7 +2,7 @@ stacks: [deploy]
 regions: [eu-west-1]
 
 deployments:
-  cloudformation:
+  elasticsearch-node-rotation-cloudformation:
     type: cloud-formation
     app: elk-data-node-rotation
     parameters:
