@@ -1,7 +1,7 @@
 {
   "name": "elasticsearch-node-rotation",
   "isAwsLambda": true,
-  "cloudformation": false,
+  "cloudformation": "cloudformation.yaml",
   "projectName": "@@PREFIX::elasticsearch-node-rotation",
   "buildDir": "./target",
   "riffraffFile": "riff-raff.yaml",

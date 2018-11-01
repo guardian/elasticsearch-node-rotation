@@ -10,6 +10,8 @@ yarn run build
 
 yarn run test
 
+cp cloudformation.yaml target
+
 # Set up a package.json for CAPI
 cp package.json target/capi-package.json
 sed -i -e "s,@@PREFIX,capi,g" target/capi-package.json
