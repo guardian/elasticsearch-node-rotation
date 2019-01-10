@@ -1,0 +1,43 @@
+regions: [eu-west-1]
+
+templates:
+  cloudformation:
+    type: cloud-formation
+    parameters:
+      templatePath: cloudformation/cloudformation.yaml
+  lambda:
+    type: aws-lambda
+    parameters:
+      prefixStack: false
+      fileName: elasticsearch-node-rotation.zip
+      functionNames:
+      - enr-cluster-status-check-
+      - enr-get-oldest-node-
+      - enr-add-node-
+      - enr-cluster-size-check-
+      - enr-migrate-shards-
+      - enr-shard-migration-check-
+      - enr-remove-node-
+
+deployments:
+  deploy-tools-cloudformation:
+    stacks: [deploy]
+    template: cloudformation
+    app: elk-data-node-rotation
+  deploy-tools-lambda:
+    stacks: [deploy]
+    dependencies: [deploy-tools-cloudformation]
+    template: lambda
+    parameters:
+      bucket: deploy-tools-dist
+
+  ophan-cloudformation:
+    stacks: [ophan]
+    template: cloudformation
+    app: elk-data-node-rotation
+  ophan-lambda:
+    stacks: [ophan]
+    dependencies: [ophan-cloudformation]
+    template: lambda
+    parameters:
+      bucket: ophan-dist

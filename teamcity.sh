@@ -10,26 +10,14 @@ yarn run build
 
 yarn run test
 
-cp cloudformation.yaml target
+cp cloudformation.yaml target/
 
-function packageAndUpload {
-    echo "Now doing package and upload for $1"
-    # Set up a project specific package.json
-    sed -e "s,@@PREFIX,$1,g" package.json > target/$1-package.json
+cp package.json target/
 
-    pushd target
-    # Ensures the RiffRaff package has the node_modules needed to run
-    yarn install --production
-    popd
+pushd target
+# Ensures the RiffRaff package has the node_modules needed to run
+yarn install --production
+popd
 
-    cp target/$1-package.json package.json
-    cp target/$1-package.json target/package.json
-    cp riff-raff-$1.yaml riff-raff.yaml
-    cp riff-raff-$1.yaml target/riff-raff.yaml
-    yarn run package
-}
-
-packageAndUpload capi
-packageAndUpload tools # Deploy Tools
-packageAndUpload ophan
-
+cp riff-raff.yaml target/
+yarn run package
