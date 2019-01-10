@@ -3,10 +3,12 @@ regions: [eu-west-1]
 templates:
   cloudformation:
     type: cloud-formation
+    contentDirectory: elasticsearch-node-rotation-cloudformation
     parameters:
       templatePath: cloudformation/cloudformation.yaml
   lambda:
     type: aws-lambda
+    contentDirectory: elasticsearch-node-rotation
     parameters:
       prefixStack: false
       fileName: elasticsearch-node-rotation.zip
