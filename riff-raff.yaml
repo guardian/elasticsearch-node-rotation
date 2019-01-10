@@ -22,24 +22,24 @@ templates:
       - enr-remove-node-
 
 deployments:
-  deploy-tools-cloudformation:
+  deploy-tools-enr-cloudformation:
     stacks: [deploy]
     template: cloudformation
     app: elk-data-node-rotation
-  deploy-tools-lambda:
+  deploy-tools-enr-lambda:
     stacks: [deploy]
-    dependencies: [deploy-tools-cloudformation]
+    dependencies: [deploy-tools-enr-cloudformation]
     template: lambda
     parameters:
       bucket: deploy-tools-dist
 
-  ophan-cloudformation:
+  ophan-enr-cloudformation:
     stacks: [ophan]
     template: cloudformation
     app: elk-data-node-rotation
-  ophan-lambda:
+  ophan-enr-lambda:
     stacks: [ophan]
-    dependencies: [ophan-cloudformation]
+    dependencies: [ophan-enr-cloudformation]
     template: lambda
     parameters:
       bucket: ophan-dist
