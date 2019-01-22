@@ -37,7 +37,7 @@ deployments:
   ophan-enr-cloudformation:
     stacks: [ophan]
     template: cloudformation
-    app: elk-data-node-rotation
+    app: ophan-es-node-rotation
   ophan-enr-lambda:
     stacks: [ophan]
     dependencies: [ophan-enr-cloudformation]
