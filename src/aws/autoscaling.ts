@@ -15,6 +15,21 @@ export function detachInstance(instance: Instance, asgName: string): Promise<Det
     return awsAutoscaling.detachInstances(params).promise()
 }
 
+export function attachInstance(instance: Instance, asgName: string): Promise<{}> {
+    console.log(`Attaching ${instance.id} to ${asgName}.`);
+    const params = {
+        InstanceIds: [ instance.id ],
+        AutoScalingGroupName: asgName
+    };
+    return awsAutoscaling.attachInstances(params).promise()
+}
+
+export function terminateInstanceInASG(instance: Instance): Promise<AutoScaling.Types.ActivityType> {
+    console.log(`Terminating instance ${instance.id}`);
+    const params = { InstanceId: instance.id, ShouldDecrementDesiredCapacity: true };
+    return awsAutoscaling.terminateInstanceInAutoScalingGroup(params).promise()
+}
+
 export function describeAsg(asgName: string): Promise<AutoScaling.Types.AutoScalingGroupsType> {
     const params = { AutoScalingGroupNames: [ asgName ] };
     return awsAutoscaling.describeAutoScalingGroups(params).promise();
