@@ -22,7 +22,8 @@ export function getElasticsearchNode(instance: Instance): Promise<ElasticsearchN
             const json = JSON.parse(result);
             if (json._nodes.total === 1) {
                 const nodeId: string = Object.keys(json.nodes)[0];
-                return new ElasticsearchNode(instance, nodeId);
+                const isMaster: boolean = json.nodes[nodeId].settings.node.master == 'true';
+                return new ElasticsearchNode(instance, nodeId, isMaster);
             } else {
                 throw `expected information about a single node, but got: ${JSON.stringify(json)}`;
             }

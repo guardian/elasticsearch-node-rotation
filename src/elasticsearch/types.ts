@@ -10,10 +10,12 @@ export class ElasticsearchNode {
 
     ec2Instance: Instance;
     nodeId: string;
+    isMasterEligible: boolean;
 
-    constructor(instance: Instance, nodeId: string) {
+    constructor(instance: Instance, nodeId: string, isMasterEligible) {
         this.ec2Instance = instance;
         this.nodeId = nodeId;
+        this.isMasterEligible = isMasterEligible
     }
 
 }
