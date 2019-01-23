@@ -22,12 +22,6 @@ export function getInstances(asgName: string): Promise<string[]> {
     )
 }
 
-export function terminateInstance(instance: Instance): Promise<TerminateInstancesResult> {
-    console.log(`Terminating instance ${instance.id}`);
-    const params = { InstanceIds: [ instance.id ] };
-    return awsEc2.terminateInstances(params).promise()
-}
-
 export function getSpecificInstance(instanceIds: string[], instanceFilter: InstanceFilter): Promise<Instance> {
     console.log(`Fetching details for: ${instanceIds}`);
     const params = { InstanceIds: instanceIds };

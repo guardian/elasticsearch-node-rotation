@@ -70,11 +70,12 @@ Resources:
                 Action:
                 - autoscaling:DescribeAutoScalingGroups
                 - ec2:DescribeInstances
-                - ec2:TerminateInstances
                 Resource: "*"
               - Effect: Allow
                 Action:
                 - autoscaling:DetachInstances
+                - autoscaling:AttachInstances
+                - autoscaling:TerminateInstanceInAutoScalingGroup
                 Resource:
                   - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DataNodeAsg}
               - !If
@@ -83,6 +84,8 @@ Resources:
                     Effect: Allow
                     Action:
                     - autoscaling:DetachInstances
+                    - autoscaling:AttachInstances
+                    - autoscaling:TerminateInstanceInAutoScalingGroup
                     Resource:
                     - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DedicatedMasterAsg}
                   - !Ref AWS::NoValue
@@ -231,6 +234,25 @@ Resources:
         Variables:
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
+  ReattachOldInstanceLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+        !Sub enr-reattach-old-instance-${Stage}
+      Description: "Reattaches old instance to the ASG"
+      Handler: "reattachOldInstance.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
+      MemorySize: 512
+      Runtime: nodejs8.10
+      Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+
   MigrateShardsLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
@@ -295,6 +317,7 @@ Resources:
     - ClusterStatusCheckLambda
     - AddNodeLambda
     - ClusterSizeCheckLambda
+    - ReattachOldInstanceLambda
     - MigrateShardsLambda
     - ShardMigrationCheckLambda
     - RemoveNodeLambda
@@ -343,7 +366,7 @@ Resources:
                "ClusterSizeCheck": {
                  "Type": "Task",
                  "Resource": "${ClusterSizeCheckArn}",
-                 "Next": "MigrateShards",
+                 "Next": "ReattachOldInstance",
                  "Retry": [ {
                    "ErrorEquals": [ "States.ALL" ],
                    "IntervalSeconds": 30,
@@ -351,6 +374,11 @@ Resources:
                    "BackoffRate": 1.0
                   } ]
                },
+               "ReattachOldInstance": {
+                  "Type": "Task",
+                  "Resource": "${ReattachOldInstanceArn}",
+                  "Next": "MigrateShards"
+                },
                "MigrateShards": {
                   "Type": "Task",
                   "Resource": "${MigrateShardsArn}",
@@ -379,6 +407,7 @@ Resources:
             ClusterStatusCheckArn: !GetAtt ClusterStatusCheckLambda.Arn
             AddNodeArn: !GetAtt AddNodeLambda.Arn
             ClusterSizeCheckArn: !GetAtt ClusterSizeCheckLambda.Arn
+            ReattachOldInstanceArn: !GetAtt ReattachOldInstanceLambda.Arn
             MigrateShardsArn: !GetAtt MigrateShardsLambda.Arn
             ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn

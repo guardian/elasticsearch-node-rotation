@@ -17,6 +17,7 @@ templates:
       - enr-get-oldest-node-
       - enr-add-node-
       - enr-cluster-size-check-
+      - enr-reattach-old-instance-
       - enr-migrate-shards-
       - enr-shard-migration-check-
       - enr-remove-node-
@@ -36,7 +37,7 @@ deployments:
   ophan-enr-cloudformation:
     stacks: [ophan]
     template: cloudformation
-    app: elk-data-node-rotation
+    app: ophan-es-node-rotation
   ophan-enr-lambda:
     stacks: [ophan]
     dependencies: [ophan-enr-cloudformation]

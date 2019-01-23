@@ -1,6 +1,6 @@
 import {OldAndNewNodeResponse} from './utils/handlerInputs';
 import {ssmCommand} from './utils/ssmCommand';
-import {terminateInstance} from "./aws/ec2Instances";
+import {terminateInstanceInASG} from "./aws/autoscaling";
 import {Instance} from './aws/types';
 import {excludeFromAllocation} from "./elasticsearch/elasticsearch";
 
@@ -11,7 +11,7 @@ export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNo
 
     return new Promise<OldAndNewNodeResponse>((resolve, reject) => {
         ssmCommand("systemctl stop elasticsearch", oldestInstance.id, false)
-                .then(() => terminateInstance(oldestInstance))
+                .then(() => terminateInstanceInASG(oldestInstance))
                 .then(() => excludeFromAllocation("", newestInstance.id)) // Don't exclude any ips
                 .then(() => resolve(event))
                 .catch(error => {
