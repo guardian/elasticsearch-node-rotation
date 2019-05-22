@@ -44,3 +44,14 @@ deployments:
     template: lambda
     parameters:
       bucket: ophan-dist
+  
+  grid-enr-cloudformation:
+    stacks: [media-service]
+    template: cloudformation
+    app: grid-es-node-rotation
+  grid-enr-lambda:
+    stacks: [media-service]
+    dependencies: [grid-enr-cloudformation]
+    template: lambda
+    parameters:
+      bucket: media-service-dist
