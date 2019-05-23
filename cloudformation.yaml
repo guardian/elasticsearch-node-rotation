@@ -42,7 +42,7 @@ Resources:
   NodeRotationLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub NodeRotation
+      RoleName: !Sub ${ClusterName}-NodeRotation-${Stage}
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow
