@@ -9,7 +9,7 @@ export function ssmCommand(command: string, instanceId: string, outputExpected: 
     return new Promise<string>((resolve, reject) => {
         sendCommand(command, instanceId)
             .then(delay)
-            .then((sendResult: SSM.Types.SendCommandResult) => awaitCommandResult(sendResult.Command.CommandId, instanceId, 3))
+            .then((sendResult: SSM.Types.SendCommandResult) => awaitCommandResult(sendResult.Command.CommandId, instanceId, 6))
             .then((result: SSM.Types.GetCommandInvocationResult) => {
                 if (result.Status === 'Success' && outputExpected) return (result.StandardOutputUrl);
                 else if (result.Status === 'Success' && !outputExpected) resolve("success");
