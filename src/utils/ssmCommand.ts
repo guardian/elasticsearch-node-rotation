@@ -13,7 +13,7 @@ export function ssmCommand(command: string, instanceId: string, outputExpected: 
             .then((result: SSM.Types.GetCommandInvocationResult) => {
                 if (result.Status === 'Success' && outputExpected) return (result.StandardOutputUrl);
                 else if (result.Status === 'Success' && !outputExpected) resolve("success");
-                else reject(`SSM command: ${command} result was: ${result.Status} / ${result.StandardErrorContent}`)
+                else reject(`SSM command executed on ${instanceId} not successfully completed. status='${result.Status}' errorContent='${result.StandardErrorContent}' command='${command}'`)
             })
             .then(delay)
             .then(getResultFromS3)
