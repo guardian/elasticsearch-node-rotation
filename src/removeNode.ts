@@ -10,6 +10,7 @@ export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNo
     const newestInstance: Instance = event.newestElasticsearchNode.ec2Instance;
 
     if (event.oldestElasticsearchNode.isMasterEligible) try {
+        console.log(`attempting to terminate oldestInstance: ${oldestInstance.id}`);
         await ssmCommand("systemctl stop elasticsearch", oldestInstance.id, false);
     } catch(error) {
         console.log(`Will still attempt to terminate ${oldestInstance.id} after best effort at gentle shutdown not completed due to: ${error}`);

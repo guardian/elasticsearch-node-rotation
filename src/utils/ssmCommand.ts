@@ -13,7 +13,7 @@ export function ssmCommand(command: string, instanceId: string, outputExpected: 
             .then((result: SSM.Types.GetCommandInvocationResult) => {
                 if (result.Status === 'Success' && outputExpected) return (result.StandardOutputUrl);
                 else if (result.Status === 'Success' && !outputExpected) resolve("success");
-                else reject(`SSM command result was: ${result.Status} / ${result.StandardErrorContent}`)
+                else reject(`SSM command: ${command} result was: ${result.Status} / ${result.StandardErrorContent}`)
             })
             .then(delay)
             .then(getResultFromS3)
@@ -23,6 +23,7 @@ export function ssmCommand(command: string, instanceId: string, outputExpected: 
 }
 
 function sendCommand(command, instanceId): Promise<SSM.Types.SendCommandResult> {
+        console.log(`sending SSM command: ${command} for instance: ${instanceId}`);
     return ssm.sendCommand({
         DocumentName: 'AWS-RunShellScript',
         Parameters: {
