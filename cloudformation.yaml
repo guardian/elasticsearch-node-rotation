@@ -15,12 +15,18 @@ Parameters:
   DataNodeAsg:
     Type: String
     Description: The name of the auto-scaling group which contains the Elasticsearch data nodes (which may also be masters).
+  WarmDataNodeAsg:
+    Type: String
+    Description: The name of the warm auto-scaling group which contains the Elasticsearch warm data nodes (optional).
   DedicatedMasterAsg:
     Type: String
     Description: The name of the auto-scaling group which contains dedicated Elasticsearch master nodes. Leave this field empty if the Elasticsearch cluster does not have dedicated master nodes.
   DataNodeRotationCronExpression:
     Type: String
     Description: Cron expression which determines when data node rotations are scheduled.
+  WarmDataNodeRotationCronExpression:
+    Type: String
+    Description: Cron expression which determines when warm data node rotations are scheduled.
   MasterNodeRotationCronExpression:
     Type: String
     Description: Cron expression which determines when master node rotations are scheduled. Only required if the Elasticsearch cluster has dedicated master nodes.
@@ -36,6 +42,7 @@ Parameters:
 
 Conditions:
   HasDedicatedMasters: !Not [!Equals [!Ref DedicatedMasterAsg, '']]
+  HasWarmDataNodes: !Not [!Equals [!Ref WarmDataNodeAsg, '']]
 
 Resources:
 
@@ -88,6 +95,17 @@ Resources:
                     - autoscaling:TerminateInstanceInAutoScalingGroup
                     Resource:
                     - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DedicatedMasterAsg}
+                  - !Ref AWS::NoValue
+              - !If
+                  - HasWarmDataNodes
+                  -
+                    Effect: Allow
+                    Action:
+                    - autoscaling:DetachInstances
+                    - autoscaling:AttachInstances
+                    - autoscaling:TerminateInstanceInAutoScalingGroup
+                    Resource:
+                    - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${WarmDataNodeAsg}
                   - !Ref AWS::NoValue
         - PolicyName: ElasticsearchAdminSsmPolicy
           PolicyDocument:
@@ -427,6 +445,29 @@ Resources:
           - |
             {
               "asgName": "${DataNodeAsg}",
+              "stepFunctionArn": "${StepFunctionArn}"
+            }
+          -
+           StepFunctionArn: !Ref NodeRotationStepFunction
+    DependsOn:
+    - NodeRotationStepFunction
+    - TriggerExecutionRole
+
+  WarmDataNodeRotationSchedule:
+    Condition: HasWarmDataNodes
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub warm-data-node-rotation-schedule-${ClusterName}
+      ScheduleExpression: !Ref WarmDataNodeRotationCronExpression
+      State: ENABLED
+      Targets:
+      - Arn: !Ref NodeRotationStepFunction
+        RoleArn: !GetAtt TriggerExecutionRole.Arn
+        Id: !GetAtt NodeRotationStepFunction.Name
+        Input: !Sub
+          - |
+            {
+              "asgName": "${WarmDataNodeAsg}",
               "stepFunctionArn": "${StepFunctionArn}"
             }
           -
