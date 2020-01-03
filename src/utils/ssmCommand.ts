@@ -1,6 +1,7 @@
 import SSM = require('aws-sdk/clients/ssm');
 import {Url} from 'aws-sdk/clients/ssm';
 import {GetObjectOutput} from "aws-sdk/clients/s3";
+import{delay} from "../utils/helperFunctions";
 const AWS = require('aws-sdk');
 const ssm = new AWS.SSM();
 const s3 = new AWS.S3();
@@ -36,12 +37,6 @@ function sendCommand(command, instanceId): Promise<SSM.Types.SendCommandResult> 
         ],
         OutputS3BucketName: process.env.SSM_BUCKET_NAME
     }).promise();
-}
-
-function delay(value) {
-    return new Promise((resolve) => {
-       setTimeout(() => resolve(value), 10000)
-    });
 }
 
 const terminalState = new Set(['Success', 'TimedOut', 'Failed', 'Cancelled']);

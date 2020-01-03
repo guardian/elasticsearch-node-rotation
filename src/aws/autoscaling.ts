@@ -1,6 +1,7 @@
 import {AutoScaling} from 'aws-sdk';
 import {AutoScalingGroupsType, DetachInstancesAnswer} from 'aws-sdk/clients/autoscaling';
 import {Instance} from './types';
+import {retry} from '../utils/helperFunctions';
 
 const AWS = require('aws-sdk');
 const awsAutoscaling = new AWS.AutoScaling();
@@ -12,7 +13,7 @@ export function detachInstance(instance: Instance, asgName: string): Promise<Det
         AutoScalingGroupName: asgName,
         ShouldDecrementDesiredCapacity: false
     };
-    return awsAutoscaling.detachInstances(params).promise()
+    return retry(() => awsAutoscaling.detachInstances(params).promise(), `detaching instance ${instance.id}`, 5)
 }
 
 export function attachInstance(instance: Instance, asgName: string): Promise<{}> {
@@ -21,18 +22,21 @@ export function attachInstance(instance: Instance, asgName: string): Promise<{}>
         InstanceIds: [ instance.id ],
         AutoScalingGroupName: asgName
     };
-    return awsAutoscaling.attachInstances(params).promise()
+    return retry(() => awsAutoscaling.attachInstances(params).promise(), `attaching instance ${instance.id}`, 5)
 }
 
 export function terminateInstanceInASG(instance: Instance): Promise<AutoScaling.Types.ActivityType> {
     console.log(`Terminating instance ${instance.id}`);
-    const params = { InstanceId: instance.id, ShouldDecrementDesiredCapacity: true };
-    return awsAutoscaling.terminateInstanceInAutoScalingGroup(params).promise()
+    const params = { 
+        InstanceId: instance.id,
+        ShouldDecrementDesiredCapacity: true 
+    };
+    return retry(() => awsAutoscaling.terminateInstanceInAutoScalingGroup(params).promise(), `terminating instance ${instance.id}`, 5)
 }
 
 export function describeAsg(asgName: string): Promise<AutoScaling.Types.AutoScalingGroupsType> {
     const params = { AutoScalingGroupNames: [ asgName ] };
-    return awsAutoscaling.describeAutoScalingGroups(params).promise();
+    return retry(() => awsAutoscaling.describeAutoScalingGroups(params).promise(), `describing ASG ${asgName}`, 5)
 }
 
 export function getDesiredCapacity(asgInfo: AutoScalingGroupsType): number {
