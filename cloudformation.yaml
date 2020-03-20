@@ -195,6 +195,25 @@ Resources:
         Variables:
           SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
+  AutoScalingGroupCheckLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName:
+        !Sub enr-auto-scaling-group-check-${Stage}
+      Description: "Checks that a single Auto Scaling Group is returned with a maximum limit greater than the desired capacity"
+      Handler: "autoScalingGroupCheck.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
+      MemorySize: 512
+      Runtime: nodejs10.x
+      Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+
   GetOldestNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
@@ -331,6 +350,7 @@ Resources:
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn:
+    - AutoScalingGroupCheckLambda
     - GetOldestNodeLambda
     - ClusterStatusCheckLambda
     - AddNodeLambda
@@ -347,8 +367,13 @@ Resources:
           - |
            {
              "Comment": "Elasticsearch Node Rotation",
-             "StartAt": "GetOldestNode",
+             "StartAt": "AutoScalingGroupCheck",
              "States": {
+               "AutoScalingGroupCheck": {
+                 "Type": "Task",
+                 "Resource": "${AutoScalingGroupCheckArn}",
+                 "Next": "GetOldestNode"
+                },
                "GetOldestNode": {
                  "Type": "Task",
                  "Resource": "${GetOldestNodeArn}",
@@ -421,6 +446,7 @@ Resources:
              }
            }
           -
+            AutoScalingGroupCheckArn: !GetAtt AutoScalingGroupCheckLambda.Arn
             GetOldestNodeArn: !GetAtt GetOldestNodeLambda.Arn
             ClusterStatusCheckArn: !GetAtt ClusterStatusCheckLambda.Arn
             AddNodeArn: !GetAtt AddNodeLambda.Arn

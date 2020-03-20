@@ -1,5 +1,5 @@
-import {getDesiredCapacity} from '../../src/aws/autoscaling'
 import {AutoScalingGroup, AutoScalingGroupsType} from 'aws-sdk/clients/autoscaling';
+import {singleASG} from "../../src/autoScalingGroupCheck";
 
 function asg(name: string, desiredCapacity: number): AutoScalingGroup {
     return {
@@ -14,30 +14,30 @@ function asg(name: string, desiredCapacity: number): AutoScalingGroup {
     };
 }
 
-describe("getDesiredCapacity", () => {
+describe("singleASG", () => {
+    it("should throw an error if more than one ASG is returned", () => {
+        const multipleASGs: AutoScalingGroupsType = {
+            AutoScalingGroups: [asg("asg1", 3), asg("asg2", 4)]
+        };
+        expect(() => { singleASG(multipleASGs.AutoScalingGroups) }).toThrow()
+    });
+});
+
+describe("singleASG", () => {
     it("should throw an error if no ASG information is returned", () => {
         const mock: AutoScalingGroupsType = {
             AutoScalingGroups: []
         };
-        expect(() => { getDesiredCapacity(mock); }).toThrow()
+        expect(() => { singleASG(mock.AutoScalingGroups) }).toThrow()
     });
 });
 
-describe("getDesiredCapacity", () => {
-    it("should throw an error if information is returned about more than one ASG", () => {
-        const mock: AutoScalingGroupsType = {
-            AutoScalingGroups: [asg("asg123", 3), asg("asg124", 4)]
-        }
-        expect(() => { getDesiredCapacity(mock); }).toThrow()
-    });
-});
-
-describe("getDesiredCapacity", () => {
+describe("DesiredCapacity", () => {
     it("should return the desired capacity correctly if we get info about a single ASG", () => {
         const desiredCapacity = 3;
         const mock: AutoScalingGroupsType = {
             AutoScalingGroups: [asg("asg123", desiredCapacity)]
         }
-        expect(getDesiredCapacity(mock)).toEqual(desiredCapacity);
+        expect(singleASG(mock.AutoScalingGroups).DesiredCapacity).toEqual(desiredCapacity);
     });
 });

@@ -1,38 +1,25 @@
-import { OldestNodeResponse, StateMachineInput } from './utils/handlerInputs';
-import {getInstances, getSpecificInstance} from './aws/ec2Instances';
+import {AutoScalingGroupCheckResponse, OldestNodeResponse} from './utils/handlerInputs';
+import {getSpecificInstance} from './aws/ec2Instances';
 import {getElasticsearchNode} from './elasticsearch/elasticsearch';
 import {Instance} from './aws/types';
-import { totalRunningExecutions } from './aws/stepFunctions';
 
-export async function handler(event: StateMachineInput): Promise<OldestNodeResponse> {
-    return new Promise<OldestNodeResponse>((resolve, reject) => {
-        const asg: string = event.asgName;
-        const arn: string = event.stepFunctionArn;
-        Promise.all([
-            totalRunningExecutions(arn),
-            getInstances(asg)
-        ])
-            .then(([runningExecutions, instances]: [number, string[]]) => {
-                if (runningExecutions !== 1) {
-                    const error = `Failing Step Function execution; expected to find one running execution (this one!) but there were ${runningExecutions}.`;
-                    console.log(error);
-                    reject(error)
-                }
-                console.log(`Searching for oldest node in ${asg}`);
-                return getSpecificInstance(instances, findOldestInstance);
-            })
-            .then(getElasticsearchNode)
-            .then(node => {
-                resolve({
-                    asgName: asg,
-                    oldestElasticsearchNode: node
-                })
-            })
-            .catch(error => {
-                console.log(`Failed to identify the oldest node in the cluster due to: ${error}`);
-                reject(error)
-            })
-    })
+export async function handler(event: AutoScalingGroupCheckResponse): Promise<OldestNodeResponse> {
+    try {
+        const asg = event.asgName
+        const instances: string[] = event.instanceIds
+        console.log(`Searching for oldest node in ${asg}`)
+        const specificInstance = await getSpecificInstance(instances, findOldestInstance)
+        const node = await getElasticsearchNode(specificInstance)
+
+        return ({
+            asgName: event.asgName,
+            oldestElasticsearchNode: node
+        })
+    } catch (error) { 
+        console.log(`Failed to identify the oldest node in the cluster due to: ${error}`)
+        throw error
+    }
+
 
 }
 
