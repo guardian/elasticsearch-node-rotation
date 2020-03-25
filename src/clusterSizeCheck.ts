@@ -1,16 +1,18 @@
 import {AddNodeResponse, OldAndNewNodeResponse} from './utils/handlerInputs';
 import {getClusterHealth, getElasticsearchNode} from './elasticsearch/elasticsearch';
-import {getInstances, getSpecificInstance} from './aws/ec2Instances';
+import {getSpecificInstance} from './aws/ec2Instances';
 import {ElasticsearchClusterStatus, ElasticsearchNode} from './elasticsearch/types';
 import {Instance} from './aws/types';
+import {describeAsg} from "./aws/autoscaling";
+import {singleASG} from "./autoScalingGroupCheck";
 
 export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResponse> {
-
-    const asg: string = event.asgName;
-
-    const newestNode: Promise<ElasticsearchNode> = getInstances(asg)
-        .then(instances => getSpecificInstance(instances, findNewestInstance))
-        .then(getElasticsearchNode);
+    
+    const asgs = await describeAsg(event.asgName)
+    const singleAsg = singleASG(asgs.AutoScalingGroups)
+    const instanceIds = singleAsg.Instances.map(i  => i.InstanceId)
+    const newestInstance = await getSpecificInstance(instanceIds, findNewestInstance)
+    const newestNode = getElasticsearchNode(newestInstance)
 
     return new Promise<OldAndNewNodeResponse>((resolve, reject) => {
         getClusterHealth(event.oldestElasticsearchNode.ec2Instance.id)
@@ -26,7 +28,7 @@ export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResp
             })
             .then( (newestElasticsearchNode: ElasticsearchNode) => {
                 const response: OldAndNewNodeResponse = {
-                    "asgName": asg,
+                    "asgName": event.asgName,
                     "oldestElasticsearchNode": event.oldestElasticsearchNode,
                     "newestElasticsearchNode": newestElasticsearchNode
                 };
