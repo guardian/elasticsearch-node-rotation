@@ -2,10 +2,8 @@ import {
     AutoScalingGroupCheckResponse,
     StateMachineInput
 } from './utils/handlerInputs';
-import {describeAsg} from "./aws/autoscaling";
+import {describeAsg, singleASG} from "./aws/autoscaling";
 import {totalRunningExecutions} from "./aws/stepFunctions";
-import {AutoScalingGroup, AutoScalingGroups} from "aws-sdk/clients/autoscaling";
-
 
 export async function handler(event: StateMachineInput): Promise<AutoScalingGroupCheckResponse> {
     try {
@@ -41,14 +39,5 @@ export async function handler(event: StateMachineInput): Promise<AutoScalingGrou
     } catch (error) {
         console.log(`Failing Step Function execution; ${error}`)
         throw error
-    }
-}
-
-export function singleASG(groups: AutoScalingGroups): AutoScalingGroup {
-    const groupNumber = groups.length;
-    if (groupNumber !== 1) {
-        throw new Error(`Expected single ASG, but got ${groupNumber}`)
-    } else {
-        return groups[0]
     }
 }

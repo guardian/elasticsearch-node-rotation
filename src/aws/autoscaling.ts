@@ -1,5 +1,5 @@
 import {AutoScaling} from 'aws-sdk';
-import {DetachInstancesAnswer} from 'aws-sdk/clients/autoscaling';
+import {AutoScalingGroup, AutoScalingGroups, DetachInstancesAnswer} from 'aws-sdk/clients/autoscaling';
 import {Instance} from './types';
 import {retry} from '../utils/helperFunctions';
 
@@ -37,4 +37,13 @@ export function terminateInstanceInASG(instance: Instance): Promise<AutoScaling.
 export function describeAsg(asgName: string): Promise<AutoScaling.Types.AutoScalingGroupsType> {
     const params = { AutoScalingGroupNames: [ asgName ] };
     return retry(() => awsAutoscaling.describeAutoScalingGroups(params).promise(), `describing ASG ${asgName}`, 5)
+}
+
+export function singleASG(groups: AutoScalingGroups): AutoScalingGroup {
+    const groupNumber = groups.length;
+    if (groupNumber !== 1) {
+        throw new Error(`Expected single ASG, but got ${groupNumber}`)
+    } else {
+        return groups[0]
+    }
 }
