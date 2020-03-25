@@ -1,5 +1,5 @@
 import {AutoScalingGroup, AutoScalingGroupsType} from 'aws-sdk/clients/autoscaling';
-import {singleASG} from "../../src/autoScalingGroupCheck";
+import {singleASG} from "../../src/aws/autoscaling";
 
 function asg(name: string, desiredCapacity: number): AutoScalingGroup {
     return {
