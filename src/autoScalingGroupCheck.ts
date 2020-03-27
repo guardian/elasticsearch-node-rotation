@@ -2,7 +2,7 @@ import {
     AutoScalingGroupCheckResponse,
     StateMachineInput
 } from './utils/handlerInputs';
-import {describeAsg, singleASG} from "./aws/autoscaling";
+import {getASG} from "./aws/autoscaling";
 import {totalRunningExecutions} from "./aws/stepFunctions";
 
 export async function handler(event: StateMachineInput): Promise<AutoScalingGroupCheckResponse> {
@@ -15,17 +15,15 @@ export async function handler(event: StateMachineInput): Promise<AutoScalingGrou
             throw new Error(error)
         }
 
-        const asgPromise = describeAsg(event.asgName)
-        const asgs = await asgPromise
-        const singleAsg = singleASG(asgs.AutoScalingGroups)
+        const asg = await getASG(event.asgName)
 
-        if (singleAsg.MaxSize == singleAsg.DesiredCapacity) {
+        if (asg.MaxSize <= asg.Instances.length) {
             const error = `ASG MaxSize must be greater than Desired Capacity to allow for ReattachOldInstance step.`
             throw new Error(error)
         }
 
-        const instanceIds = singleAsg.Instances.map(i  => i.InstanceId)
-        const unhealthyInstanceCount = singleAsg.Instances.filter(i => i.HealthStatus !== 'Healthy').length
+        const instanceIds = asg.Instances.map(i  => i.InstanceId)
+        const unhealthyInstanceCount = asg.Instances.filter(i => i.HealthStatus !== 'Healthy').length
 
         if (unhealthyInstanceCount > 0) {
             const error = `ASG has ${unhealthyInstanceCount} unhealthy instances`;

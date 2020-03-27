@@ -3,13 +3,12 @@ import {getClusterHealth, getElasticsearchNode} from './elasticsearch/elasticsea
 import {getSpecificInstance} from './aws/ec2Instances';
 import {ElasticsearchClusterStatus, ElasticsearchNode} from './elasticsearch/types';
 import {Instance} from './aws/types';
-import {describeAsg, singleASG} from "./aws/autoscaling";
+import {getASG} from "./aws/autoscaling";
 
 export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResponse> {
 
-    const asgs = await describeAsg(event.asgName)
-    const singleAsg = singleASG(asgs.AutoScalingGroups)
-    const instanceIds = singleAsg.Instances.map(i  => i.InstanceId)
+    const asg = await getASG(event.asgName)
+    const instanceIds = asg.Instances.map(i  => i.InstanceId)
     const newestInstance = await getSpecificInstance(instanceIds, findNewestInstance)
     const newestNode = getElasticsearchNode(newestInstance)
 
