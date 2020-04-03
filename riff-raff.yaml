@@ -13,6 +13,7 @@ templates:
       prefixStack: false
       fileName: elasticsearch-node-rotation.zip
       functionNames:
+      - enr-auto-scaling-group-check-
       - enr-cluster-status-check-
       - enr-get-oldest-node-
       - enr-add-node-
