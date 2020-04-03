@@ -1,5 +1,5 @@
 import {AutoScaling} from 'aws-sdk';
-import {AutoScalingGroupsType, DetachInstancesAnswer} from 'aws-sdk/clients/autoscaling';
+import {AutoScalingGroup, DetachInstancesAnswer} from 'aws-sdk/clients/autoscaling';
 import {Instance} from './types';
 import {retry} from '../utils/helperFunctions';
 
@@ -39,11 +39,12 @@ export function describeAsg(asgName: string): Promise<AutoScaling.Types.AutoScal
     return retry(() => awsAutoscaling.describeAutoScalingGroups(params).promise(), `describing ASG ${asgName}`, 5)
 }
 
-export function getDesiredCapacity(asgInfo: AutoScalingGroupsType): number {
-    const asgsInResponse = asgInfo.AutoScalingGroups.length;
-    if (asgsInResponse !== 1) {
-        throw `Expected information about a single ASG, but got ${asgsInResponse}`;
+export async function getASG(asgName: string): Promise<AutoScalingGroup> {
+    const groups = await describeAsg(asgName)
+    const groupNumber = groups.AutoScalingGroups.length;
+    if (groupNumber !== 1) {
+        throw new Error(`Expected single ASG, but got ${groupNumber}`)
     } else {
-        return asgInfo.AutoScalingGroups[0].DesiredCapacity;
+        return groups.AutoScalingGroups[0]
     }
 }

@@ -8,20 +8,6 @@ const awsEc2 = new AWS.EC2();
 
 type InstanceFilter = (instances: Instance[]) => Instance;
 
-export function getInstances(asgName: string): Promise<string[]> {
-    const autoScalingRequest = describeAsg(asgName);
-    return autoScalingRequest.then(
-        function (data: AutoScalingGroupsType) {
-            const instances = data.AutoScalingGroups[0].Instances;
-            return instances.map(instance => instance.InstanceId);
-        },
-        function (error) {
-            console.log(error, error.stack, error.statusCode);
-            return error;
-        }
-    )
-}
-
 export function getSpecificInstance(instanceIds: string[], instanceFilter: InstanceFilter): Promise<Instance> {
     console.log(`Fetching details for: ${instanceIds}`);
     const params = { InstanceIds: instanceIds };

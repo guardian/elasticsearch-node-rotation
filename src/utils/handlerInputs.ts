@@ -8,6 +8,10 @@ export interface AsgInput {
     asgName: string;
 }
 
+export interface AutoScalingGroupCheckResponse extends AsgInput {
+    instanceIds: string[];
+}
+
 export interface OldestNodeResponse extends AsgInput {
     oldestElasticsearchNode: ElasticsearchNode;
 }
