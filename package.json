@@ -6,7 +6,7 @@
   "buildDir": "./target",
   "riffraffFile": "riff-raff.yaml",
   "dependencies": {
-    "aws-sdk": "^2.264.1",
+    "aws-sdk": "^2.783.0",
     "node-riffraff-artefact": "^2.0.1",
     "typescript": "2.8.3"
   },
