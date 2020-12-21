@@ -6,6 +6,9 @@ Parameters:
   Stage:
     Type: String
     Description: Stage name.
+  Stack:
+    Type: String
+    Description: The name of the stack. This field is optional, use only if you need to run multiple instances of node rotation.
   DeployS3Bucket:
     Type: String
     Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist.
@@ -43,6 +46,7 @@ Parameters:
 Conditions:
   HasDedicatedMasters: !Not [!Equals [!Ref DedicatedMasterAsg, '']]
   HasWarmDataNodes: !Not [!Equals [!Ref WarmDataNodeAsg, '']]
+  HasStackName: !Not [!Equals [!Ref Stack, '']]
 
 Resources:
 
@@ -180,8 +184,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-          !Sub enr-cluster-status-check-${Stage}
+      FunctionName: !If
+        - HasStackName
+        - !Sub ${Stack}-enr-cluster-status-check-${Stage}
+        - !Sub enr-cluster-status-check-${Stage}
       Description: "Checks the status of an Elasticsearch cluster"
       Handler: "clusterStatusCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -199,8 +205,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-        !Sub enr-auto-scaling-group-check-${Stage}
+      FunctionName: !If
+        - HasStackName
+        - !Sub ${Stack}-enr-auto-scaling-group-check-${Stage}
+        - !Sub enr-auto-scaling-group-check-${Stage}
       Description: "Checks that a single Auto Scaling Group is returned with a maximum limit greater than the desired capacity"
       Handler: "autoScalingGroupCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -218,8 +226,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-          !Sub enr-get-oldest-node-${Stage}
+      FunctionName: !If
+        - HasStackName
+        - !Sub ${Stack}-enr-get-oldest-node-${Stage}
+        - !Sub enr-get-oldest-node-${Stage}
       Description: "Finds the oldest node in an Elasticsearch cluster"
       Handler: "getOldestNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -237,8 +247,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-          !Sub enr-add-node-${Stage}
+      FunctionName: !If
+        - HasStackName
+        - !Sub ${Stack}-enr-add-node-${Stage}
+        - !Sub enr-add-node-${Stage}
       Description: "Disables re-balancing before adding a new node into the Elasticsearch cluster"
       Handler: "addNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -256,8 +268,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-          !Sub enr-cluster-size-check-${Stage}
+      FunctionName: !If
+      - HasStackName
+      - !Sub ${Stack}-enr-cluster-size-check-${Stage}
+      - !Sub enr-cluster-size-check-${Stage}
       Description: "Confirms that the Elasticsearch cluster is the expected size"
       Handler: "clusterSizeCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -275,8 +289,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-        !Sub enr-reattach-old-instance-${Stage}
+      FunctionName: !If
+      - HasStackName
+      - !Sub ${Stack}-enr-reattach-old-instance-${Stage}
+      - !Sub enr-reattach-old-instance-${Stage}
       Description: "Reattaches old instance to the ASG"
       Handler: "reattachOldInstance.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -294,8 +310,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-          !Sub enr-migrate-shards-${Stage}
+      FunctionName: !If
+      - HasStackName
+      - !Sub ${Stack}-enr-migrate-shards-${Stage}
+      - !Sub enr-migrate-shards-${Stage}
       Description: "Migrates shards between two nodes"
       Handler: "migrateShards.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -313,8 +331,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-          !Sub enr-shard-migration-check-${Stage}
+      FunctionName: !If
+      - HasStackName
+      - !Sub ${Stack}-enr-shard-migration-check-${Stage}
+      - !Sub enr-shard-migration-check-${Stage}
       Description: "Confirms that all shards have been migrated (and that cluster is green) or exits with an error"
       Handler: "shardMigrationCheck.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -332,8 +352,10 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName:
-          !Sub enr-remove-node-${Stage}
+      FunctionName: !If
+        - HasStackName
+        - !Sub ${Stack}-enr-remove-node-${Stage}
+        - !Sub enr-remove-node-${Stage}
       Description: "Removes the oldest node in the cluster (and terminates the instance) before re-enabling re-balancing"
       Handler: "removeNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
@@ -530,7 +552,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicForAlerts}
-      AlarmName: !Sub Failed to complete node rotation for ${Stage} Elasticsearch Cluster
+      AlarmName: !Sub Failed to complete node rotation for ${ClusterName}, ${Stage} Elasticsearch Cluster
       AlarmDescription: !Sub
         - Elasticsearch Node Rotation failed - please see Step Function execution history for ${StepFunctionName}
         - { StepFunctionName: !GetAtt NodeRotationStepFunction.Name }
