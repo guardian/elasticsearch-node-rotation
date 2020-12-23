@@ -352,7 +352,7 @@ Resources:
     - RemoveNodeLambda
     Properties:
       StateMachineName:
-        !Sub ${Stack}-Elasticsearch-Node-Rotation
+        !Sub ${Stack}-Elasticsearch-Node-Rotation-${Stage}
       DefinitionString:
         !Sub
           - |
@@ -451,7 +451,7 @@ Resources:
   DataNodeRotationSchedule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub ${Stack}-data-node-rotation-schedule
+      Name: !Sub ${Stack}-data-node-rotation-schedule-${Stage}
       ScheduleExpression: !Ref DataNodeRotationCronExpression
       State: ENABLED
       Targets:
@@ -474,7 +474,7 @@ Resources:
     Condition: HasWarmDataNodes
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub ${Stack}-warm-data-node-rotation-schedule
+      Name: !Sub ${Stack}-warm-data-node-rotation-schedule-${Stage}
       ScheduleExpression: !Ref WarmDataNodeRotationCronExpression
       State: ENABLED
       Targets:
@@ -497,7 +497,7 @@ Resources:
     Condition: HasDedicatedMasters
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub ${Stack}-master-node-rotation-schedule
+      Name: !Sub ${Stack}-master-node-rotation-schedule-${Stage}
       ScheduleExpression: !Ref MasterNodeRotationCronExpression
       State: ENABLED
       Targets:
