@@ -10,18 +10,17 @@ templates:
     type: aws-lambda
     contentDirectory: elasticsearch-node-rotation
     parameters:
-      prefixStack: false
       fileName: elasticsearch-node-rotation.zip
       functionNames:
-      - enr-auto-scaling-group-check-
-      - enr-cluster-status-check-
-      - enr-get-oldest-node-
-      - enr-add-node-
-      - enr-cluster-size-check-
-      - enr-reattach-old-instance-
-      - enr-migrate-shards-
-      - enr-shard-migration-check-
-      - enr-remove-node-
+      - -enr-auto-scaling-group-check-
+      - -enr-cluster-status-check-
+      - -enr-get-oldest-node-
+      - -enr-add-node-
+      - -enr-cluster-size-check-
+      - -enr-reattach-old-instance-
+      - -enr-migrate-shards-
+      - -enr-shard-migration-check-
+      - -enr-remove-node-
 
 deployments:
   deploy-tools-enr-cloudformation:
