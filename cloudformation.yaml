@@ -535,4 +535,5 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       Statistic: Sum
+      TreatMissingData: notBreaching
     DependsOn: NodeRotationStepFunction
