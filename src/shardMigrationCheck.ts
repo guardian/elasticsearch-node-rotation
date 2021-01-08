@@ -7,12 +7,10 @@ export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNo
         getDocuments(event.oldestElasticsearchNode)
     ]).then(([clusterStatus, documents]) => {
         const hasDocuments = documents.count > 0;
-        const isMasterAndShardsRelocating = event.oldestElasticsearchNode.isMasterEligible && clusterStatus.relocating_shards > 0;
         const clusterIsUnhealthy = !(clusterStatus.status === "green");
 
-        if (clusterIsUnhealthy || hasDocuments || isMasterAndShardsRelocating) {
-            const error =
-                `Check failed: hasDocuments=${hasDocuments} isMasterAndShardsRelocating=${isMasterAndShardsRelocating} clusterIsUnhealthy=${clusterIsUnhealthy}`;
+        if (clusterIsUnhealthy || hasDocuments) {
+            const error = `Check failed: hasDocuments=${hasDocuments} clusterIsUnhealthy=${clusterIsUnhealthy}`;
             console.log(error);
             throw new Error(error);
         } else return event;
