@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+# source NVM on teamcity
+if [ -e "${NVM_DIR}/nvm.sh" ]; then
+    . ${NVM_DIR}/nvm.sh
+else
+    . $(brew --prefix nvm)/nvm.sh
+fi
+nvm install
+nvm use
+
 npm install -g yarn
 
 yarn install
