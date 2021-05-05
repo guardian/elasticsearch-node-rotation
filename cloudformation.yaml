@@ -5,10 +5,10 @@ Description: "Step Function for rotating Elasticsearch nodes"
 Parameters:
   Stage:
     Type: String
-    Description: Stage name.
+    Description: Stage tag, to restrict SSM commands to just the required instances and for context in alerts.
   Stack:
     Type: String
-    Description: The name of the stack, for context in alerts and/or running node rotation against multiple clusters.
+    Description: Stack tag, to restrict SSM commands to just the required instances and for context in alerts.
   DeployS3Bucket:
     Type: String
     Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist.
@@ -111,10 +111,19 @@ Resources:
           PolicyDocument:
             Statement:
               - Effect: Allow
-                Action:
-                - ssm:SendCommand
-                - ssm:GetCommandInvocation
+                Action: ssm:GetCommandInvocation
+                # This cannot be restricted further but that's OK, it's just reading the output of commands
                 Resource: "*"
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource: !Sub arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                Condition:
+                  StringEquals:
+                    ssm:resourceTag/Stack: !Ref Stack
+                    ssm:resourceTag/Stage: !Ref Stage
         - PolicyName: SsmS3Policy
           PolicyDocument:
             Statement:
