@@ -3,36 +3,26 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Step Function for rotating Elasticsearch nodes"
 
 Parameters:
-  Stage:
-    Type: String
-    Description: Stage name.
   Stack:
     Type: String
-    Description: The name of the stack, for context in alerts and/or running node rotation against multiple clusters.
+    Description: Stack name defined in riff-raff.yaml to support per-account continuous deployment of this project. Not required if the template will be updated manually.
+  App:
+    Type: String
+    Description: App name defined in riff-raff.yaml to support per-account continuous deployment of this project
+    Default: elasticsearch-node-rotation
+  Stage:
+    Type: String
+    Description: Stage name for Riff-Raff deploys to support per-account continuous deployment of this project
+    Default: PROD
   DeployS3Bucket:
     Type: String
     Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist.
   DeployS3Key:
     Type: String
-    Description: Key for .zip file used by lambda functions e.g. <stack>/<stage>/elasticsearch-node-rotation/elasticsearch-node-rotation.zip.
-  DataNodeAsg:
-    Type: String
-    Description: The name of the auto-scaling group which contains the Elasticsearch data nodes (which may also be masters).
-  WarmDataNodeAsg:
-    Type: String
-    Description: The name of the warm auto-scaling group which contains the Elasticsearch warm data nodes (optional).
-  DedicatedMasterAsg:
-    Type: String
-    Description: The name of the auto-scaling group which contains dedicated Elasticsearch master nodes. Leave this field empty if the Elasticsearch cluster does not have dedicated master nodes.
-  DataNodeRotationCronExpression:
+    Description: Key for .zip file used by lambda functions e.g. <stack>/<stage>/<app>/<app>.zip.
+  RotationCronExpression:
     Type: String
     Description: Cron expression which determines when data node rotations are scheduled.
-  WarmDataNodeRotationCronExpression:
-    Type: String
-    Description: Cron expression which determines when warm data node rotations are scheduled.
-  MasterNodeRotationCronExpression:
-    Type: String
-    Description: Cron expression which determines when master node rotations are scheduled. Only required if the Elasticsearch cluster has dedicated master nodes.
   SsmOutputBucketName:
     Type: String
     Description: Bucket used to store SSM command output. This bucket must already exist and the instances which receive SSM commands must have PutObject permissions for this bucket.
@@ -40,9 +30,6 @@ Parameters:
     Type: String
     Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt.
 
-Conditions:
-  HasDedicatedMasters: !Not [!Equals [!Ref DedicatedMasterAsg, '']]
-  HasWarmDataNodes: !Not [!Equals [!Ref WarmDataNodeAsg, '']]
 
 Resources:
 
@@ -84,37 +71,26 @@ Resources:
                 - autoscaling:AttachInstances
                 - autoscaling:TerminateInstanceInAutoScalingGroup
                 Resource:
-                  - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DataNodeAsg}
-              - !If
-                  - HasDedicatedMasters
-                  -
-                    Effect: Allow
-                    Action:
-                    - autoscaling:DetachInstances
-                    - autoscaling:AttachInstances
-                    - autoscaling:TerminateInstanceInAutoScalingGroup
-                    Resource:
-                    - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${DedicatedMasterAsg}
-                  - !Ref AWS::NoValue
-              - !If
-                  - HasWarmDataNodes
-                  -
-                    Effect: Allow
-                    Action:
-                    - autoscaling:DetachInstances
-                    - autoscaling:AttachInstances
-                    - autoscaling:TerminateInstanceInAutoScalingGroup
-                    Resource:
-                    - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${WarmDataNodeAsg}
-                  - !Ref AWS::NoValue
+                - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/*
+                Condition:
+                  StringLike:
+                    autoscaling:ResourceTag/RotateWithElasticsearchNodeRotation: "*"
         - PolicyName: ElasticsearchAdminSsmPolicy
           PolicyDocument:
             Statement:
               - Effect: Allow
-                Action:
-                - ssm:SendCommand
-                - ssm:GetCommandInvocation
+                Action: ssm:GetCommandInvocation
+                # This cannot be restricted further but that's OK, it's just reading the output
                 Resource: "*"
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource: !Sub arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                Condition:
+                  StringLike:
+                    ssm:resourceTag/RotateWithElasticsearchNodeRotation: "*"
         - PolicyName: SsmS3Policy
           PolicyDocument:
             Statement:
@@ -175,6 +151,24 @@ Resources:
                 Action:
                 - states:StartExecution
                 Resource: !Ref NodeRotationStepFunction
+
+  DiscoverAutoScalingGroupsLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      FunctionName: !Sub ${Stack}-enr-discover-auto-scaling-groups-${Stage}
+      Description: "Looks up by tag the autoscaling groups to rotate"
+      Handler: "discoverAutoScalingGroups.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
+      MemorySize: 512
+      Runtime: nodejs14.x
+      Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
 
   ClusterStatusCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -341,6 +335,7 @@ Resources:
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn:
+    - DiscoverAutoScalingGroupsLambda
     - AutoScalingGroupCheckLambda
     - GetOldestNodeLambda
     - ClusterStatusCheckLambda
@@ -358,84 +353,100 @@ Resources:
           - |
            {
              "Comment": "Elasticsearch Node Rotation",
-             "StartAt": "AutoScalingGroupCheck",
+             "StartAt": "DiscoverAutoScalingGroups",
              "States": {
-               "AutoScalingGroupCheck": {
-                 "Type": "Task",
-                 "Resource": "${AutoScalingGroupCheckArn}",
-                 "Next": "GetOldestNode"
+                "DiscoverAutoScalingGroups": {
+                  "Type": "Task",
+                  "Resource": "${DiscoverAutoScalingGroupsArn}",
+                  "Next": "RotateAutoScalingGroups"
                 },
-               "GetOldestNode": {
-                 "Type": "Task",
-                 "Resource": "${GetOldestNodeArn}",
-                 "Next": "CheckClusterStatus"
-               },
-               "CheckClusterStatus": {
-                 "Type": "Task",
-                 "Resource": "${ClusterStatusCheckArn}",
-                 "Next": "StatusIsGreen"
-               },
-               "StatusIsGreen": {
-                 "Type": "Choice",
-                 "Choices": [
-                   {
-                     "Not": {
-                       "Variable": "$.clusterStatus",
-                       "StringEquals": "green"
-                     },
-                     "Next": "FailState"
-                   }
-                 ],
-                 "Default": "AddNode"
-               },
-               "FailState": {
-                 "Type": "Fail",
-                 "Cause": "Unhealthy Cluster!"
-               },
-               "AddNode": {
-                 "Type": "Task",
-                 "Resource": "${AddNodeArn}",
-                 "Next": "ClusterSizeCheck"
-               },
-               "ClusterSizeCheck": {
-                 "Type": "Task",
-                 "Resource": "${ClusterSizeCheckArn}",
-                 "Next": "ReattachOldInstance",
-                 "Retry": [ {
-                   "ErrorEquals": [ "States.ALL" ],
-                   "IntervalSeconds": 30,
-                   "MaxAttempts": 20,
-                   "BackoffRate": 1.0
-                  } ]
-               },
-               "ReattachOldInstance": {
-                  "Type": "Task",
-                  "Resource": "${ReattachOldInstanceArn}",
-                  "Next": "MigrateShards"
-                },
-               "MigrateShards": {
-                  "Type": "Task",
-                  "Resource": "${MigrateShardsArn}",
-                  "Next": "ShardMigrationCheck"
-               },
-               "ShardMigrationCheck": {
-                  "Type": "Task",
-                  "Resource": "${ShardMigrationCheckArn}",
-                  "Next": "RemoveNode",
-                  "Retry": [ {
-                    "ErrorEquals": [ "States.ALL" ],
-                    "IntervalSeconds": 120,
-                    "MaxAttempts": 120,
-                    "BackoffRate": 1.0
-                   } ]
-               },
-               "RemoveNode": {
-                 "Type": "Task",
-                 "Resource": "${RemoveNodeArn}",
-                 "End": true
+                "RotateAutoScalingGroups": {
+                  "Type": "Map",
+                  "End": true,
+                  "ItemsPath": "$.asgNames",
+                  "MaxConcurrency": 1,
+                  "Iterator": {
+                    "StartAt": "AutoScalingGroupCheck",
+                    "States": {
+                      "AutoScalingGroupCheck": {
+                        "Type": "Task",
+                        "Resource": "${AutoScalingGroupCheckArn}",
+                        "Next": "GetOldestNode"
+                      },
+                      "GetOldestNode": {
+                        "Type": "Task",
+                        "Resource": "${GetOldestNodeArn}",
+                        "Next": "CheckClusterStatus"
+                      },
+                      "CheckClusterStatus": {
+                        "Type": "Task",
+                        "Resource": "${ClusterStatusCheckArn}",
+                        "Next": "StatusIsGreen"
+                      },
+                      "StatusIsGreen": {
+                        "Type": "Choice",
+                        "Choices": [
+                          {
+                            "Not": {
+                              "Variable": "$.clusterStatus",
+                              "StringEquals": "green"
+                            },
+                            "Next": "FailState"
+                          }
+                        ],
+                        "Default": "AddNode"
+                      },
+                      "FailState": {
+                        "Type": "Fail",
+                        "Cause": "Unhealthy Cluster!"
+                      },
+                      "AddNode": {
+                        "Type": "Task",
+                        "Resource": "${AddNodeArn}",
+                        "Next": "ClusterSizeCheck"
+                      },
+                      "ClusterSizeCheck": {
+                        "Type": "Task",
+                        "Resource": "${ClusterSizeCheckArn}",
+                        "Next": "ReattachOldInstance",
+                        "Retry": [ {
+                          "ErrorEquals": [ "States.ALL" ],
+                          "IntervalSeconds": 30,
+                          "MaxAttempts": 20,
+                          "BackoffRate": 1.0
+                          } ]
+                      },
+                      "ReattachOldInstance": {
+                          "Type": "Task",
+                          "Resource": "${ReattachOldInstanceArn}",
+                          "Next": "MigrateShards"
+                        },
+                      "MigrateShards": {
+                          "Type": "Task",
+                          "Resource": "${MigrateShardsArn}",
+                          "Next": "ShardMigrationCheck"
+                      },
+                      "ShardMigrationCheck": {
+                          "Type": "Task",
+                          "Resource": "${ShardMigrationCheckArn}",
+                          "Next": "RemoveNode",
+                          "Retry": [ {
+                            "ErrorEquals": [ "States.ALL" ],
+                            "IntervalSeconds": 120,
+                            "MaxAttempts": 120,
+                            "BackoffRate": 1.0
+                          } ]
+                      },
+                      "RemoveNode": {
+                        "Type": "Task",
+                        "Resource": "${RemoveNodeArn}",
+                        "End": true
+                      }
+                    }
+                  }
+                }
               }
-             }
-           }
+            }
           -
             AutoScalingGroupCheckArn: !GetAtt AutoScalingGroupCheckLambda.Arn
             GetOldestNodeArn: !GetAtt GetOldestNodeLambda.Arn
@@ -446,13 +457,14 @@ Resources:
             MigrateShardsArn: !GetAtt MigrateShardsLambda.Arn
             ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
+            DiscoverAutoScalingGroupsArn: !GetAtt DiscoverAutoScalingGroupsLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
 
-  DataNodeRotationSchedule:
+  NodeRotationSchedule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub ${Stack}-data-node-rotation-schedule-${Stage}
-      ScheduleExpression: !Ref DataNodeRotationCronExpression
+      Name: !Sub ${Stack}-node-rotation-schedule-${Stage}
+      ScheduleExpression: !Ref RotationCronExpression
       State: ENABLED
       Targets:
       - Arn: !Ref NodeRotationStepFunction
@@ -461,57 +473,11 @@ Resources:
         Input: !Sub
           - |
             {
-              "asgName": "${DataNodeAsg}",
+              "autoScalingGroupDiscoveryTagKey": "RotateWithElasticsearchNodeRotation",
               "stepFunctionArn": "${StepFunctionArn}"
             }
           -
            StepFunctionArn: !Ref NodeRotationStepFunction
-    DependsOn:
-    - NodeRotationStepFunction
-    - TriggerExecutionRole
-
-  WarmDataNodeRotationSchedule:
-    Condition: HasWarmDataNodes
-    Type: AWS::Events::Rule
-    Properties:
-      Name: !Sub ${Stack}-warm-data-node-rotation-schedule-${Stage}
-      ScheduleExpression: !Ref WarmDataNodeRotationCronExpression
-      State: ENABLED
-      Targets:
-      - Arn: !Ref NodeRotationStepFunction
-        RoleArn: !GetAtt TriggerExecutionRole.Arn
-        Id: !GetAtt NodeRotationStepFunction.Name
-        Input: !Sub
-          - |
-            {
-              "asgName": "${WarmDataNodeAsg}",
-              "stepFunctionArn": "${StepFunctionArn}"
-            }
-          -
-           StepFunctionArn: !Ref NodeRotationStepFunction
-    DependsOn:
-    - NodeRotationStepFunction
-    - TriggerExecutionRole
-
-  MasterNodeRotationSchedule:
-    Condition: HasDedicatedMasters
-    Type: AWS::Events::Rule
-    Properties:
-      Name: !Sub ${Stack}-master-node-rotation-schedule-${Stage}
-      ScheduleExpression: !Ref MasterNodeRotationCronExpression
-      State: ENABLED
-      Targets:
-      - Arn: !Ref NodeRotationStepFunction
-        RoleArn: !GetAtt TriggerExecutionRole.Arn
-        Id: !GetAtt NodeRotationStepFunction.Name
-        Input: !Sub
-          - |
-            {
-              "asgName": "${DedicatedMasterAsg}",
-              "stepFunctionArn": "${StepFunctionArn}"
-            }
-          -
-            StepFunctionArn: !Ref NodeRotationStepFunction
     DependsOn:
     - NodeRotationStepFunction
     - TriggerExecutionRole
@@ -519,9 +485,10 @@ Resources:
   ExecutionFailureAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmActions:
-      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicForAlerts}
-      AlarmName: !Sub Failed to complete node rotation for ${Stack}, ${Stage} Elasticsearch Cluster
+      # AlarmActions:
+      # - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicForAlerts}
+      # TODO MRB: how to include which cluster failed in the alarm?
+      AlarmName: !Sub Failed to complete node rotation for Elasticsearch Cluster
       AlarmDescription: !Sub
         - Elasticsearch Node Rotation failed - please see Step Function execution history for ${StepFunctionName}
         - { StepFunctionName: !GetAtt NodeRotationStepFunction.Name }

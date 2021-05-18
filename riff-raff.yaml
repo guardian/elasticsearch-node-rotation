@@ -3,6 +3,7 @@ regions: [eu-west-1]
 templates:
   cloudformation:
     type: cloud-formation
+    app: elasticsearch-node-rotation
     contentDirectory: elasticsearch-node-rotation-cloudformation
     parameters:
       templatePath: cloudformation/cloudformation.yaml
@@ -12,6 +13,7 @@ templates:
     parameters:
       fileName: elasticsearch-node-rotation.zip
       functionNames:
+      - -enr-discover-auto-scaling-groups-
       - -enr-auto-scaling-group-check-
       - -enr-cluster-status-check-
       - -enr-get-oldest-node-
@@ -55,3 +57,11 @@ deployments:
     template: lambda
     parameters:
       bucket: media-service-dist
+  
+  # TODO MRB: remove   
+  pfi-playground-lambda:
+    stacks: [pfi-playground]
+    app: pfi-playground-es-node-rotation
+    template: lambda
+    parameters:
+      bucket: investigations-dist
