@@ -13,7 +13,7 @@ templates:
     parameters:
       fileName: elasticsearch-node-rotation.zip
       functionNames:
-      - -enr-discover-auto-scaling-groups-
+      - -enr-discover-auto-scaling-group-
       - -enr-auto-scaling-group-check-
       - -enr-cluster-status-check-
       - -enr-get-oldest-node-

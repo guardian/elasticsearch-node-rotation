@@ -3,10 +3,7 @@ import {ElasticsearchNode} from '../elasticsearch/types'
 export interface StateMachineInput {
     autoScalingGroupDiscoveryTagKey: string;
     stepFunctionArn: string;
-}
-
-export interface DiscoveredAsgsInput {
-    asgNames: AsgInput[]
+    asgName?: string
 }
 
 export interface AsgInput {

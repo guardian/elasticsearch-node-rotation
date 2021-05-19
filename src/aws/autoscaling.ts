@@ -48,34 +48,3 @@ export async function getASG(asgName: string): Promise<AutoScalingGroup> {
         return groups.AutoScalingGroups[0]
     }
 }
-
-export async function discoverASGs(tagKey: string): Promise<AutoScalingGroup[]> {
-    async function _listASGs(acc: AutoScalingGroup[] = [], nextToken?: string): Promise<AutoScalingGroup[]> {
-        const params = {
-            MaxRecords: 100,
-            NextToken: nextToken
-        };
-        
-        const response = await retry<AutoScaling.Types.AutoScalingGroupsType>(
-            () => awsAutoscaling.describeAutoScalingGroups(params).promise(),
-            `looking up ASGs by tag ${tagKey}`,
-            5
-        );
-
-        const asgs = acc.concat(response.AutoScalingGroups);
-
-        if(response.NextToken) {
-            return _listASGs(asgs, response.NextToken);
-        } else {
-            return asgs;
-        }
-    }
-
-    const allASGs = await _listASGs();
-
-    const taggedASGs = allASGs.filter(asg =>
-        asg.Tags && asg.Tags.find(( { Key }) => Key === tagKey)
-    );
-
-    return taggedASGs;
-}

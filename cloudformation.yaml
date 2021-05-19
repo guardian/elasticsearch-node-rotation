@@ -152,13 +152,13 @@ Resources:
                 - states:StartExecution
                 Resource: !Ref NodeRotationStepFunction
 
-  DiscoverAutoScalingGroupsLambda:
+  DiscoverAutoScalingGroupLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName: !Sub ${Stack}-enr-discover-auto-scaling-groups-${Stage}
+      FunctionName: !Sub ${Stack}-enr-discover-auto-scaling-group-${Stage}
       Description: "Looks up by tag the autoscaling groups to rotate"
-      Handler: "discoverAutoScalingGroups.handler"
+      Handler: "discoverAutoScalingGroup.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${DeployS3Bucket}
@@ -335,7 +335,7 @@ Resources:
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn:
-    - DiscoverAutoScalingGroupsLambda
+    - DiscoverAutoScalingGroupLambda
     - AutoScalingGroupCheckLambda
     - GetOldestNodeLambda
     - ClusterStatusCheckLambda
@@ -353,97 +353,86 @@ Resources:
           - |
            {
              "Comment": "Elasticsearch Node Rotation",
-             "StartAt": "DiscoverAutoScalingGroups",
+             "StartAt": "DiscoverAutoScalingGroup",
              "States": {
-                "DiscoverAutoScalingGroups": {
+                "DiscoverAutoScalingGroup": {
                   "Type": "Task",
-                  "Resource": "${DiscoverAutoScalingGroupsArn}",
-                  "Next": "RotateAutoScalingGroups"
+                  "Resource": "${DiscoverAutoScalingGroupArn}",
+                  "Next": "AutoScalingGroupCheck"
                 },
-                "RotateAutoScalingGroups": {
-                  "Type": "Map",
-                  "End": true,
-                  "ItemsPath": "$.asgNames",
-                  "MaxConcurrency": 1,
-                  "Iterator": {
-                    "StartAt": "AutoScalingGroupCheck",
-                    "States": {
-                      "AutoScalingGroupCheck": {
-                        "Type": "Task",
-                        "Resource": "${AutoScalingGroupCheckArn}",
-                        "Next": "GetOldestNode"
+                "AutoScalingGroupCheck": {
+                  "Type": "Task",
+                  "Resource": "${AutoScalingGroupCheckArn}",
+                  "Next": "GetOldestNode"
+                },
+                "GetOldestNode": {
+                  "Type": "Task",
+                  "Resource": "${GetOldestNodeArn}",
+                  "Next": "CheckClusterStatus"
+                },
+                "CheckClusterStatus": {
+                  "Type": "Task",
+                  "Resource": "${ClusterStatusCheckArn}",
+                  "Next": "StatusIsGreen"
+                },
+                "StatusIsGreen": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Not": {
+                        "Variable": "$.clusterStatus",
+                        "StringEquals": "green"
                       },
-                      "GetOldestNode": {
-                        "Type": "Task",
-                        "Resource": "${GetOldestNodeArn}",
-                        "Next": "CheckClusterStatus"
-                      },
-                      "CheckClusterStatus": {
-                        "Type": "Task",
-                        "Resource": "${ClusterStatusCheckArn}",
-                        "Next": "StatusIsGreen"
-                      },
-                      "StatusIsGreen": {
-                        "Type": "Choice",
-                        "Choices": [
-                          {
-                            "Not": {
-                              "Variable": "$.clusterStatus",
-                              "StringEquals": "green"
-                            },
-                            "Next": "FailState"
-                          }
-                        ],
-                        "Default": "AddNode"
-                      },
-                      "FailState": {
-                        "Type": "Fail",
-                        "Cause": "Unhealthy Cluster!"
-                      },
-                      "AddNode": {
-                        "Type": "Task",
-                        "Resource": "${AddNodeArn}",
-                        "Next": "ClusterSizeCheck"
-                      },
-                      "ClusterSizeCheck": {
-                        "Type": "Task",
-                        "Resource": "${ClusterSizeCheckArn}",
-                        "Next": "ReattachOldInstance",
-                        "Retry": [ {
-                          "ErrorEquals": [ "States.ALL" ],
-                          "IntervalSeconds": 30,
-                          "MaxAttempts": 20,
-                          "BackoffRate": 1.0
-                          } ]
-                      },
-                      "ReattachOldInstance": {
-                          "Type": "Task",
-                          "Resource": "${ReattachOldInstanceArn}",
-                          "Next": "MigrateShards"
-                        },
-                      "MigrateShards": {
-                          "Type": "Task",
-                          "Resource": "${MigrateShardsArn}",
-                          "Next": "ShardMigrationCheck"
-                      },
-                      "ShardMigrationCheck": {
-                          "Type": "Task",
-                          "Resource": "${ShardMigrationCheckArn}",
-                          "Next": "RemoveNode",
-                          "Retry": [ {
-                            "ErrorEquals": [ "States.ALL" ],
-                            "IntervalSeconds": 120,
-                            "MaxAttempts": 120,
-                            "BackoffRate": 1.0
-                          } ]
-                      },
-                      "RemoveNode": {
-                        "Type": "Task",
-                        "Resource": "${RemoveNodeArn}",
-                        "End": true
-                      }
+                      "Next": "FailState"
                     }
-                  }
+                  ],
+                  "Default": "AddNode"
+                },
+                "FailState": {
+                  "Type": "Fail",
+                  "Cause": "Unhealthy Cluster!"
+                },
+                "AddNode": {
+                  "Type": "Task",
+                  "Resource": "${AddNodeArn}",
+                  "Next": "ClusterSizeCheck"
+                },
+                "ClusterSizeCheck": {
+                  "Type": "Task",
+                  "Resource": "${ClusterSizeCheckArn}",
+                  "Next": "ReattachOldInstance",
+                  "Retry": [ {
+                    "ErrorEquals": [ "States.ALL" ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 20,
+                    "BackoffRate": 1.0
+                    } ]
+                },
+                "ReattachOldInstance": {
+                    "Type": "Task",
+                    "Resource": "${ReattachOldInstanceArn}",
+                    "Next": "MigrateShards"
+                  },
+                "MigrateShards": {
+                    "Type": "Task",
+                    "Resource": "${MigrateShardsArn}",
+                    "Next": "ShardMigrationCheck"
+                },
+                "ShardMigrationCheck": {
+                    "Type": "Task",
+                    "Resource": "${ShardMigrationCheckArn}",
+                    "Next": "RemoveNode",
+                    "Retry": [ {
+                      "ErrorEquals": [ "States.ALL" ],
+                      "IntervalSeconds": 120,
+                      "MaxAttempts": 120,
+                      "BackoffRate": 1.0
+                    } ]
+                },
+                "RemoveNode": {
+                  "Type": "Task",
+                  "Resource": "${RemoveNodeArn}",
+                  "End": true
                 }
               }
             }
@@ -457,7 +446,7 @@ Resources:
             MigrateShardsArn: !GetAtt MigrateShardsLambda.Arn
             ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
-            DiscoverAutoScalingGroupsArn: !GetAtt DiscoverAutoScalingGroupsLambda.Arn
+            DiscoverAutoScalingGroupArn: !GetAtt DiscoverAutoScalingGroupLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
 
   NodeRotationSchedule:

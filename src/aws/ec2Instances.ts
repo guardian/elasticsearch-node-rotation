@@ -1,12 +1,27 @@
-import {describeAsg} from './autoscaling'
-import {Instance} from './types'
-import {AutoScalingGroupsType} from 'aws-sdk/clients/autoscaling';
-import {DescribeInstancesResult, TerminateInstancesResult} from 'aws-sdk/clients/ec2';
+import {Instance} from './types';
+import {DescribeInstancesResult, Instance as EC2Instance} from 'aws-sdk/clients/ec2';
 
 const AWS = require('aws-sdk');
 const awsEc2 = new AWS.EC2();
 
 type InstanceFilter = (instances: Instance[]) => Instance;
+
+// TODO MRB: what value do we get from our own Instance class?
+function buildInstance(instance: EC2Instance): Instance {
+    const autoScalingGroupNameTag = instance.Tags!.find(({ Key }) => Key === "aws:autoscaling:groupName");
+    if(!autoScalingGroupNameTag) {
+        throw new Error(`Missing aws:autoscaling:groupName tag on instance ${instance.InstanceId}`);
+    }
+
+    return new Instance(instance.InstanceId, instance.LaunchTime, instance.PrivateIpAddress, autoScalingGroupNameTag!.Value);
+}
+
+function buildInstances(data: DescribeInstancesResult): Instance[] {
+    const instanceArrays = data.Reservations.map(arrays => arrays.Instances);
+    const instances: Instance[] = instanceArrays.concat.apply([], instanceArrays).map(buildInstance);
+
+    return instances;
+}
 
 export function getSpecificInstance(instanceIds: string[], instanceFilter: InstanceFilter): Promise<Instance> {
     console.log(`Fetching details for: ${instanceIds}`);
@@ -14,8 +29,7 @@ export function getSpecificInstance(instanceIds: string[], instanceFilter: Insta
     const requestPromise = awsEc2.describeInstances(params).promise();
     return requestPromise.then(
         function(data: DescribeInstancesResult) {
-            const instanceArrays = data.Reservations.map(arrays => arrays.Instances);
-            const instances: Instance[] = instanceArrays.concat.apply([], instanceArrays).map(instance => new Instance(instance.InstanceId, instance.LaunchTime, instance.PrivateIpAddress));
+            const instances = buildInstances(data);
             return instanceFilter(instances);
         },
         function (error) {
@@ -25,3 +39,29 @@ export function getSpecificInstance(instanceIds: string[], instanceFilter: Insta
     )
 }
 
+export async function getInstancesByTag(tagKey: string): Promise<Instance[]> {
+    console.log(`Finding EC2 instances that have tag ${tagKey}`);
+
+    async function _getInstancesByTag(acc: Instance[] = [], nextToken?: string): Promise<Instance[]> {
+        const params = {
+            MaxResults: 1000,
+            NextToken: nextToken,
+            Filters: [
+                { "Name": "tag-key", Values: [tagKey] }
+            ]
+        };
+
+        const response = await awsEc2.describeInstances(params).promise();
+        
+        const instances = buildInstances(response);
+        const allInstances = acc.concat(instances);
+
+        if(response.NextToken) {
+            return await _getInstancesByTag(allInstances, response.NextToken);
+        } else {
+            return allInstances;
+        }
+    }
+
+    return _getInstancesByTag();
+}
