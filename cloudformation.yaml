@@ -358,7 +358,21 @@ Resources:
                 "DiscoverAutoScalingGroup": {
                   "Type": "Task",
                   "Resource": "${DiscoverAutoScalingGroupArn}",
-                  "Next": "AutoScalingGroupCheck"
+                  "Next": "CheckNotAlreadyRunning"
+                },
+                "CheckNotAlreadyRunning": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Variable": "$.alreadyRunning",
+                      "BooleanEquals": false,
+                      "Next": "AutoScalingGroupCheck"
+                    }
+                  ],
+                  "Default": "StopAsAlreadyRunning"
+                },
+                "StopAsAlreadyRunning": {
+                  "Type": "Succeed"
                 },
                 "AutoScalingGroupCheck": {
                   "Type": "Task",

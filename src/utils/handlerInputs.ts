@@ -10,6 +10,10 @@ export interface AsgInput {
     asgName: string;
 }
 
+export type AsgDiscoveryResponse =
+    { alreadyRunning: true } |
+    { alreadyRunning: false } & AsgInput;
+
 export interface AutoScalingGroupCheckResponse extends AsgInput {
     instanceIds: string[];
 }

@@ -1,21 +1,20 @@
 import * as sortBy from 'lodash/sortBy';
-import {AsgInput, StateMachineInput} from './utils/handlerInputs';
+import {AsgDiscoveryResponse, StateMachineInput} from './utils/handlerInputs';
 import {totalRunningExecutions} from "./aws/stepFunctions";
 import {getInstancesByTag} from './aws/ec2Instances';
 
-export async function handler(event: StateMachineInput): Promise<AsgInput> {
+export async function handler(event: StateMachineInput): Promise<AsgDiscoveryResponse> {
     const runningExecutionsPromise = totalRunningExecutions(event.stepFunctionArn)
     const runningExecutions = await runningExecutionsPromise
 
     if (runningExecutions !== 1) {
         const error = `Expected to find one running execution (this one!) but there were ${runningExecutions}.`;
-        // TODO MRB: don't throw an error but move to a separate end state
-        throw new Error(error);
+        return { alreadyRunning: true };
     }
 
     if(event.asgName) {
         console.log(`AutoScaling group ${event.asgName} specified as input. Moving on...`);
-        return { asgName: event.asgName };
+        return { asgName: event.asgName, alreadyRunning: false };
     }
 
     const instances = await getInstancesByTag(event.autoScalingGroupDiscoveryTagKey);
@@ -30,6 +29,7 @@ export async function handler(event: StateMachineInput): Promise<AsgInput> {
     console.log(`Triggering rotation for AutoScaling group ${oldestInstance.autoScalingGroupName}`);
 
     return {
-        asgName: oldestInstance.autoScalingGroupName
+        asgName: oldestInstance.autoScalingGroupName,
+        alreadyRunning: false
     }
 }
