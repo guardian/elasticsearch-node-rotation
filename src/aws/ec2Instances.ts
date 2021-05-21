@@ -6,7 +6,6 @@ const awsEc2 = new AWS.EC2();
 
 type InstanceFilter = (instances: Instance[]) => Instance;
 
-// TODO MRB: what value do we get from our own Instance class?
 function buildInstance(instance: EC2Instance): Instance {
     const autoScalingGroupNameTag = instance.Tags!.find(({ Key }) => Key === "aws:autoscaling:groupName");
     if(!autoScalingGroupNameTag) {

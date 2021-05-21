@@ -488,12 +488,13 @@ Resources:
   ExecutionFailureAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      # AlarmActions:
-      # - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicForAlerts}
-      # TODO MRB: how to include which cluster failed in the alarm?
-      AlarmName: !Sub Failed to complete node rotation for Elasticsearch Cluster
+      AlarmActions:
+      - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicForAlerts}
+      AlarmName: !Sub Failed to complete node rotation for an elasticsearch cluster
       AlarmDescription: !Sub
-        - Elasticsearch Node Rotation failed - please see Step Function execution history for ${StepFunctionName}
+        - >
+          Elasticsearch Node Rotation failed - please see Step Function execution history for ${StepFunctionName}.
+          You can find the affected auto scaling group by clicking on the AutoScalingGroupCheck node in the execution history and clicking "Step Input"
         - { StepFunctionName: !GetAtt NodeRotationStepFunction.Name }
       MetricName: ExecutionsFailed
       Namespace: AWS/States

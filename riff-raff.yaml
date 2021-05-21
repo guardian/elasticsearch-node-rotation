@@ -58,10 +58,9 @@ deployments:
     parameters:
       bucket: media-service-dist
   
-  # TODO MRB: remove   
-  pfi-playground-lambda:
-    stacks: [pfi-playground]
-    app: pfi-playground-es-node-rotation
-    template: lambda
-    parameters:
-      bucket: investigations-dist
+  # Giant (pfi) uses elasticsearch-node-rotation but we don't allow continuous deployment
+  # of it into the account to minimise the deployment points for code that has access
+  # to the data in Giant itself.
+  #
+  # We currently update the Cloudformation and lambda packages manually.
+  # If you have made changes please email investigations.and.reporting@guardian.co.uk to let them know.
