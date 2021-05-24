@@ -22,7 +22,7 @@ Parameters:
     Description: Key for .zip file used by lambda functions e.g. <stack>/<stage>/<app>/<app>.zip.
   RotationCronExpression:
     Type: String
-    Description: Cron expression which determines when data node rotations are scheduled.
+    Description: Cron expression which determines how often node rotation occurs.
   SsmOutputBucketName:
     Type: String
     Description: Bucket used to store SSM command output. This bucket must already exist and the instances which receive SSM commands must have PutObject permissions for this bucket.
@@ -423,25 +423,25 @@ Resources:
                     } ]
                 },
                 "ReattachOldInstance": {
-                    "Type": "Task",
-                    "Resource": "${ReattachOldInstanceArn}",
-                    "Next": "MigrateShards"
-                  },
+                  "Type": "Task",
+                  "Resource": "${ReattachOldInstanceArn}",
+                  "Next": "MigrateShards"
+                },
                 "MigrateShards": {
-                    "Type": "Task",
-                    "Resource": "${MigrateShardsArn}",
-                    "Next": "ShardMigrationCheck"
+                  "Type": "Task",
+                  "Resource": "${MigrateShardsArn}",
+                  "Next": "ShardMigrationCheck"
                 },
                 "ShardMigrationCheck": {
-                    "Type": "Task",
-                    "Resource": "${ShardMigrationCheckArn}",
-                    "Next": "RemoveNode",
-                    "Retry": [ {
-                      "ErrorEquals": [ "States.ALL" ],
-                      "IntervalSeconds": 120,
-                      "MaxAttempts": 120,
-                      "BackoffRate": 1.0
-                    } ]
+                  "Type": "Task",
+                  "Resource": "${ShardMigrationCheckArn}",
+                  "Next": "RemoveNode",
+                  "Retry": [ {
+                    "ErrorEquals": [ "States.ALL" ],
+                    "IntervalSeconds": 120,
+                    "MaxAttempts": 120,
+                    "BackoffRate": 1.0
+                  } ]
                 },
                 "RemoveNode": {
                   "Type": "Task",
