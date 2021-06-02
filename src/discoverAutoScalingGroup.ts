@@ -12,6 +12,7 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
         return { alreadyRunning: true };
     }
 
+    // We can manually run rotation against a particular autoscaling group if needed
     if(event.asgName) {
         console.log(`AutoScaling group ${event.asgName} specified as input. Moving on...`);
         return { asgName: event.asgName, alreadyRunning: false };
