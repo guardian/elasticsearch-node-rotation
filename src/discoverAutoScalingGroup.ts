@@ -9,13 +9,13 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
 
     if (runningExecutions !== 1) {
         console.log(`Expected to find one running execution (this one!) but there were ${runningExecutions}.`);
-        return { alreadyRunning: true };
+        return { skipRotation: true };
     }
 
     // We can manually run rotation against a particular autoscaling group if needed
     if(event.asgName) {
         console.log(`AutoScaling group ${event.asgName} specified as input. Moving on...`);
-        return { asgName: event.asgName, alreadyRunning: false };
+        return { asgName: event.asgName, skipRotation: false };
     }
 
     const instances = await getInstancesByTag(event.autoScalingGroupDiscoveryTagKey);
@@ -30,7 +30,7 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
 
     if(oldEnoughInstances.length === 0) {
         const error = `Could not find any instances to rotate with tag ${event.autoScalingGroupDiscoveryTagKey} older than ${event.ageThresholdInDays} days`;
-        throw new Error(error);
+        return { skipRotation: true };
     }
 
     const oldestInstance = sortBy(oldEnoughInstances, instance => instance.launchTime)[0];
@@ -39,6 +39,6 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
 
     return {
         asgName: oldestInstance.autoScalingGroupName,
-        alreadyRunning: false
+        skipRotation: false
     }
 }

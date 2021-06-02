@@ -362,20 +362,20 @@ Resources:
                 "DiscoverAutoScalingGroup": {
                   "Type": "Task",
                   "Resource": "${DiscoverAutoScalingGroupArn}",
-                  "Next": "CheckNotAlreadyRunning"
+                  "Next": "CheckSkipRotation"
                 },
-                "CheckNotAlreadyRunning": {
+                "CheckSkipRotation": {
                   "Type": "Choice",
                   "Choices": [
                     {
-                      "Variable": "$.alreadyRunning",
+                      "Variable": "$.skipRotation",
                       "BooleanEquals": false,
                       "Next": "AutoScalingGroupCheck"
                     }
                   ],
-                  "Default": "StopAsAlreadyRunning"
+                  "Default": "StopAsSkippingRotation"
                 },
-                "StopAsAlreadyRunning": {
+                "StopAsSkippingRotation": {
                   "Type": "Succeed"
                 },
                 "AutoScalingGroupCheck": {

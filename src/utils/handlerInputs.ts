@@ -12,8 +12,8 @@ export interface AsgInput {
 }
 
 export type AsgDiscoveryResponse =
-    { alreadyRunning: true } |
-    { alreadyRunning: false } & AsgInput;
+    { skipRotation: true } |
+    { skipRotation: false } & AsgInput;
 
 export interface AutoScalingGroupCheckResponse extends AsgInput {
     instanceIds: string[];
