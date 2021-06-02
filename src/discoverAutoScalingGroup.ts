@@ -8,7 +8,7 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
     const runningExecutions = await runningExecutionsPromise
 
     if (runningExecutions !== 1) {
-        const error = `Expected to find one running execution (this one!) but there were ${runningExecutions}.`;
+        console.log(`Expected to find one running execution (this one!) but there were ${runningExecutions}.`);
         return { alreadyRunning: true };
     }
 
@@ -20,12 +20,20 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
 
     const instances = await getInstancesByTag(event.autoScalingGroupDiscoveryTagKey);
     
-    if(instances.length === 0) {
-        const error = `Could not find any instances to rotate with tag ${event.autoScalingGroupDiscoveryTagKey}.`;
+    console.log(`Found ${instances.length} instances with tag ${event.autoScalingGroupDiscoveryTagKey}`);
+    instances.forEach(instance => {
+        console.log(`${instance.id} (${instance.autoScalingGroupName}) launched at ${instance.launchTime.toISOString()}}`);
+    });
+
+    const threshold = Date.now() - (event.ageThresholdInDays * 24 * 60 * 60 * 1000);
+    const oldEnoughInstances = instances.filter(({ launchTime }) => launchTime.getTime() < threshold);
+
+    if(oldEnoughInstances.length === 0) {
+        const error = `Could not find any instances to rotate with tag ${event.autoScalingGroupDiscoveryTagKey} older than ${event.ageThresholdInDays} days`;
         throw new Error(error);
     }
 
-    const oldestInstance = sortBy(instances, instance => instance.launchTime)[0];
+    const oldestInstance = sortBy(oldEnoughInstances, instance => instance.launchTime)[0];
     console.log(`Found oldest instance ${oldestInstance.id} in AutoScaling group ${oldestInstance.autoScalingGroupName}`);
     console.log(`Triggering rotation for AutoScaling group ${oldestInstance.autoScalingGroupName}`);
 

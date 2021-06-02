@@ -2,6 +2,7 @@ import {ElasticsearchNode} from '../elasticsearch/types'
 
 export interface StateMachineInput {
     autoScalingGroupDiscoveryTagKey: string;
+    ageThresholdInDays: number;
     stepFunctionArn: string;
     asgName?: string
 }

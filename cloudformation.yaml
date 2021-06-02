@@ -23,6 +23,10 @@ Parameters:
   RotationCronExpression:
     Type: String
     Description: Cron expression which determines how often node rotation occurs.
+  AgeThresholdInDays:
+    Type: Number
+    Description: The number of days old an instance must be before it will be rotated. This avoids excessively rotating instances.
+    Default: 7
   SsmOutputBucketName:
     Type: String
     Description: Bucket used to store SSM command output. This bucket must already exist and the instances which receive SSM commands must have PutObject permissions for this bucket.
@@ -477,6 +481,7 @@ Resources:
           - |
             {
               "autoScalingGroupDiscoveryTagKey": "RotateWithElasticsearchNodeRotation",
+              "ageThresholdInDays": ${AgeThresholdInDays},
               "stepFunctionArn": "${StepFunctionArn}"
             }
           -
