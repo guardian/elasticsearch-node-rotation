@@ -3,6 +3,7 @@ regions: [eu-west-1]
 templates:
   cloudformation:
     type: cloud-formation
+    app: elasticsearch-node-rotation
     contentDirectory: elasticsearch-node-rotation-cloudformation
     parameters:
       templatePath: cloudformation/cloudformation.yaml
@@ -12,6 +13,7 @@ templates:
     parameters:
       fileName: elasticsearch-node-rotation.zip
       functionNames:
+      - -enr-discover-auto-scaling-group-
       - -enr-auto-scaling-group-check-
       - -enr-cluster-status-check-
       - -enr-get-oldest-node-
@@ -55,3 +57,10 @@ deployments:
     template: lambda
     parameters:
       bucket: media-service-dist
+  
+  # Giant (pfi) uses elasticsearch-node-rotation but we don't allow continuous deployment
+  # of it into the account to minimise the deployment points for code that has access
+  # to the data in Giant itself.
+  #
+  # We currently update the Cloudformation and lambda packages manually.
+  # If you have made changes please email investigations.and.reporting@guardian.co.uk to let them know.

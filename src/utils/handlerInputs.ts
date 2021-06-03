@@ -1,12 +1,19 @@
 import {ElasticsearchNode} from '../elasticsearch/types'
 
-export interface StateMachineInput extends AsgInput {
+export interface StateMachineInput {
+    autoScalingGroupDiscoveryTagKey: string;
+    ageThresholdInDays: number;
     stepFunctionArn: string;
+    asgName?: string
 }
 
 export interface AsgInput {
     asgName: string;
 }
+
+export type AsgDiscoveryResponse =
+    { skipRotation: true } |
+    { skipRotation: false } & AsgInput;
 
 export interface AutoScalingGroupCheckResponse extends AsgInput {
     instanceIds: string[];

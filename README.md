@@ -21,6 +21,7 @@ ASG (AutoScaling Group).
 1. Ensure that all EC2 instances have the [required permissions](#aws-permissions).
 1. Create a new Cloudformation stack, using the [template](https://github.com/guardian/elasticsearch-node-rotation/blob/master/cloudformation.yaml)
 in this project. The frequency of node rotations is passed into the template as a parameter.
+1. Add `RotateWithElasticsearchNodeRotation: true` as a tag the AutoScaling groups containing the instances that will be rotated
 1. Update the AMI associated with your AutoScaling Groups on a regular basis (using Riff-Raff's scheduled deploy feature).
 
 ## Implementation
