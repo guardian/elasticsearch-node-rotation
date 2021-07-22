@@ -18,8 +18,8 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
         return { asgName: event.asgName, skipRotation: false };
     }
 
-    const instances = await getInstancesByTag(event.autoScalingGroupDiscoveryTagKey);
-    
+    const instances = await getInstancesByTag(event.autoScalingGroupDiscoveryTagKey, "true");
+
     console.log(`Found ${instances.length} instances with tag ${event.autoScalingGroupDiscoveryTagKey}`);
     instances.forEach(instance => {
         console.log(`${instance.id} (${instance.autoScalingGroupName}) launched at ${instance.launchTime.toISOString()}}`);
