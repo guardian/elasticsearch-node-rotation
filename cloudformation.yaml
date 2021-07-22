@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: "Step Function for rotating Elasticsearch nodes"
+Description: "Step Function for rotating ElasticSearch nodes (regardless of their Stage, i.e. the PROD instance of this stack will rotate oldest ES instances belonging to any Stage, assuming the instances have the `RotateWithElasticsearchNodeRotation` tag set to true)"
 
 Parameters:
   Stack:
