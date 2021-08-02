@@ -56,6 +56,14 @@ Resources:
         IgnorePublicAcls: true
         BlockPublicPolicy: true
         RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: RetentionRule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 1
+                StorageClass: GLACIER
+            ExpirationInDays: 14
       Tags:
         - { Key: Stack, Value: !Ref Stack }
         - { Key: Stage, Value: !Ref Stage }
