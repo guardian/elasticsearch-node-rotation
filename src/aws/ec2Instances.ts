@@ -38,7 +38,7 @@ export function getSpecificInstance(instanceIds: string[], instanceFilter: Insta
     )
 }
 
-export async function getInstancesByTag(tagKey: string): Promise<Instance[]> {
+export async function getInstancesByTag(tagKey: string, tagValue?: string): Promise<Instance[]> {
     console.log(`Finding EC2 instances that have tag ${tagKey}`);
 
     async function _getInstancesByTag(acc: Instance[] = [], nextToken?: string): Promise<Instance[]> {
@@ -46,12 +46,12 @@ export async function getInstancesByTag(tagKey: string): Promise<Instance[]> {
             MaxResults: 1000,
             NextToken: nextToken,
             Filters: [
-                { "Name": "tag-key", Values: [tagKey] }
+                { "Name": `tag${tagValue ? `:${tagKey}` : "-key"}`, Values: [tagValue || tagKey] }
             ]
         };
 
         const response = await awsEc2.describeInstances(params).promise();
-        
+
         const instances = buildInstances(response);
         const allInstances = acc.concat(instances);
 

@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: "Step Function for rotating Elasticsearch nodes"
+Description: "Step Function for rotating ElasticSearch nodes (regardless of their Stage, i.e. the INFRA/PROD instance of this stack will rotate oldest ES instances belonging to any Stage, assuming the instances have the `RotateWithElasticsearchNodeRotation` tag set to true)"
 
 Parameters:
   Stack:
@@ -13,7 +13,7 @@ Parameters:
   Stage:
     Type: String
     Description: Stage name for Riff-Raff deploys to support per-account continuous deployment of this project
-    Default: PROD
+    Default: INFRA
   DeployS3Bucket:
     Type: String
     Description: Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist.
@@ -29,13 +29,51 @@ Parameters:
     Default: 7
   SsmOutputBucketName:
     Type: String
-    Description: Bucket used to store SSM command output. This bucket must already exist and the instances which receive SSM commands must have PutObject permissions for this bucket.
+    Description: OPTIONAL! Bucket used to store SSM command output. The instances which receive SSM commands must have PutObject permissions for this bucket. If this is not provided a bucket will be created as part of this stack.
+    Default: ""
   SNSTopicForAlerts:
     Type: String
     Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt.
 
 
+Conditions:
+  ShouldCreateSsmOutputBucket: !Equals
+    - !Ref SsmOutputBucketName
+    - ""
+
 Resources:
+
+  NodeRotationSsmOutputBucket:
+    Type: AWS::S3::Bucket
+    Condition: ShouldCreateSsmOutputBucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: RetentionRule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 1
+                StorageClass: GLACIER
+            ExpirationInDays: 14
+      Tags:
+        - { Key: Stack, Value: !Ref Stack }
+        - { Key: Stage, Value: !Ref Stage }
+
+  NodeRotationBucketSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: "/account/services/node-rotation-ssm-output-bucket-name"
+      Type: String
+      Value: !If [ShouldCreateSsmOutputBucket, !Ref NodeRotationSsmOutputBucket, !Ref SsmOutputBucketName]
 
   NodeRotationLambdaRole:
     Type: AWS::IAM::Role
@@ -101,11 +139,11 @@ Resources:
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource:
-                - !Sub arn:aws:s3:::${SsmOutputBucketName}
+                - !Sub arn:aws:s3:::${NodeRotationBucketSsmParameter.Value}
               - Effect: Allow
                 Action: s3:GetObject
                 Resource:
-                - !Sub arn:aws:s3:::${SsmOutputBucketName}/*
+                - !Sub arn:aws:s3:::${NodeRotationBucketSsmParameter.Value}/*
         - PolicyName: QueryStepFunctionHistory
           PolicyDocument:
             Statement:
@@ -172,7 +210,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   ClusterStatusCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -190,7 +228,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   AutoScalingGroupCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -208,7 +246,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   GetOldestNodeLambda:
     Type: "AWS::Lambda::Function"
@@ -226,7 +264,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   AddNodeLambda:
     Type: "AWS::Lambda::Function"
@@ -244,7 +282,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   ClusterSizeCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -262,7 +300,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   ReattachOldInstanceLambda:
     Type: "AWS::Lambda::Function"
@@ -280,7 +318,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   MigrateShardsLambda:
     Type: "AWS::Lambda::Function"
@@ -298,7 +336,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   ShardMigrationCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -316,7 +354,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   RemoveNodeLambda:
     Type: "AWS::Lambda::Function"
@@ -334,7 +372,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SSM_BUCKET_NAME: !Ref SsmOutputBucketName
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
