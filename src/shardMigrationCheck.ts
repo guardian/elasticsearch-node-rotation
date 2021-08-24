@@ -10,7 +10,7 @@ export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNo
         const clusterIsUnhealthy = !(clusterStatus.status === "green");
 
         if (clusterIsUnhealthy || hasDocuments) {
-            const error = `Check failed: hasDocuments=${hasDocuments} clusterIsUnhealthy=${clusterIsUnhealthy}`;
+            const error = `Check failed: hasDocuments=${hasDocuments} (${event.oldestElasticsearchNode.ec2Instance.id} still has ${documents.count} docs) clusterIsUnhealthy=${clusterIsUnhealthy} (status is currently ${clusterStatus.status})`;
             console.log(error);
             throw new Error(error);
         } else return event;
