@@ -46,6 +46,7 @@ export async function getInstancesByTag(tagKey: string, tagValue?: string): Prom
             MaxResults: 1000,
             NextToken: nextToken,
             Filters: [
+                { "Name": "instance-state-name", Values: ["running"] },
                 { "Name": `tag${tagValue ? `:${tagKey}` : "-key"}`, Values: [tagValue || tagKey] }
             ]
         };
