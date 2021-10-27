@@ -1,10 +1,12 @@
 import {OldAndNewNodeResponse} from './utils/handlerInputs';
-import {getClusterHealth, getDocuments} from './elasticsearch/elasticsearch';
+import {Elasticsearch} from './elasticsearch/elasticsearch';
 
 export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNodeResponse> {
+    const elasticsearchClient = new Elasticsearch(event.oldestElasticsearchNode.ec2Instance.id)
+
     return Promise.all([
-        getClusterHealth(event.oldestElasticsearchNode.ec2Instance.id),
-        getDocuments(event.oldestElasticsearchNode)
+        elasticsearchClient.getClusterHealth(),
+        elasticsearchClient.getDocuments(event.oldestElasticsearchNode)
     ]).then(([clusterStatus, documents]) => {
         const hasDocuments = documents.count > 0;
         const clusterIsUnhealthy = !(clusterStatus.status === "green");

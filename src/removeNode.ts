@@ -2,12 +2,13 @@ import {OldAndNewNodeResponse} from './utils/handlerInputs';
 import {ssmCommand} from './utils/ssmCommand';
 import {terminateInstanceInASG} from "./aws/autoscaling";
 import {Instance} from './aws/types';
-import {excludeFromAllocation} from "./elasticsearch/elasticsearch";
+import {Elasticsearch} from './elasticsearch/elasticsearch';
 
 export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNodeResponse> {
 
     const oldestInstance: Instance = event.oldestElasticsearchNode.ec2Instance;
     const newestInstance: Instance = event.newestElasticsearchNode.ec2Instance;
+    const elasticsearchClient = new Elasticsearch(newestInstance.id)
 
     if (event.oldestElasticsearchNode.isMasterEligible) try {
         console.log(`attempting to smoothly shutdown master-eligible node: ${oldestInstance.id}`);
@@ -18,7 +19,7 @@ export async function handler(event: OldAndNewNodeResponse): Promise<OldAndNewNo
 
     await Promise.all([
         terminateInstanceInASG(oldestInstance),
-        excludeFromAllocation("", newestInstance.id) // Don't exclude any ips
+        elasticsearchClient.excludeFromAllocation("") // Don't exclude any ips
     ]);
 
     return event;

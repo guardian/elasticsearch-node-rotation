@@ -1,6 +1,6 @@
 import {AutoScalingGroupCheckResponse, OldestNodeResponse} from './utils/handlerInputs';
 import {getSpecificInstance} from './aws/ec2Instances';
-import {getElasticsearchNode} from './elasticsearch/elasticsearch';
+import {Elasticsearch} from './elasticsearch/elasticsearch';
 import {Instance} from './aws/types';
 
 export async function handler(event: AutoScalingGroupCheckResponse): Promise<OldestNodeResponse> {
@@ -9,7 +9,9 @@ export async function handler(event: AutoScalingGroupCheckResponse): Promise<Old
         const instances: string[] = event.instanceIds
         console.log(`Searching for oldest node in ${asg}`)
         const specificInstance = await getSpecificInstance(instances, findOldestInstance)
-        const node = await getElasticsearchNode(specificInstance)
+        const elasticsearchClient = new Elasticsearch(specificInstance.id)
+
+        const node = await elasticsearchClient.getElasticsearchNode(specificInstance)
 
         return ({
             asgName: event.asgName,
