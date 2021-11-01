@@ -481,7 +481,7 @@ Resources:
                   "Retry": [ {
                     "ErrorEquals": [ "States.ALL" ],
                     "IntervalSeconds": 120,
-                    "MaxAttempts": 150,
+                    "MaxAttempts": 195,
                     "BackoffRate": 1.0
                   } ]
                 },
