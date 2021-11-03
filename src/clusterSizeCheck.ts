@@ -1,5 +1,5 @@
 import {AddNodeResponse, OldAndNewNodeResponse} from './utils/handlerInputs';
-import {getClusterHealth, getElasticsearchNode} from './elasticsearch/elasticsearch';
+import {Elasticsearch} from './elasticsearch/elasticsearch';
 import {getSpecificInstance} from './aws/ec2Instances';
 import {ElasticsearchClusterStatus, ElasticsearchNode} from './elasticsearch/types';
 import {Instance} from './aws/types';
@@ -10,10 +10,11 @@ export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResp
     const asg = await getASG(event.asgName)
     const instanceIds = asg.Instances.map(i  => i.InstanceId)
     const newestInstance = await getSpecificInstance(instanceIds, findNewestInstance)
-    const newestNode = getElasticsearchNode(newestInstance)
+    const elasticsearchClient = new Elasticsearch(event.oldestElasticsearchNode.ec2Instance.id)
+    const newestNode = elasticsearchClient.getElasticsearchNode(newestInstance)
 
     return new Promise<OldAndNewNodeResponse>((resolve, reject) => {
-        getClusterHealth(event.oldestElasticsearchNode.ec2Instance.id)
+        elasticsearchClient.getClusterHealth()
             .then((clusterStatus: ElasticsearchClusterStatus) => {
                 const nodesInCluster = clusterStatus.number_of_nodes;
                 if (nodesInCluster === event.expectedClusterSize) {

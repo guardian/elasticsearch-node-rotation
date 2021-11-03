@@ -1,9 +1,11 @@
 import {ClusterStatusResponse, OldestNodeResponse} from './utils/handlerInputs';
-import {getClusterHealth} from './elasticsearch/elasticsearch';
+import {Elasticsearch} from './elasticsearch/elasticsearch';
 
 export async function handler(event: OldestNodeResponse): Promise<ClusterStatusResponse> {
+    const elasticsearchClient = new Elasticsearch(event.oldestElasticsearchNode.ec2Instance.id)
+
     try {
-        const clusterStatus = await getClusterHealth(event.oldestElasticsearchNode.ec2Instance.id)
+        const clusterStatus = await elasticsearchClient.getClusterHealth()
 
         return ({
             "asgName": event.asgName,
