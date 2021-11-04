@@ -21,7 +21,7 @@ export class Elasticsearch {
     executeCommand(commandPath: string, requestJson: object, taskName: string): Promise<boolean> {
         return retry(() => this.execute(commandPath, requestJson).then((jsonResult: any) => {
             if (!(jsonResult.acknowledged === true)) {
-                throw `unexpected Elasticsearch response when attempting to ${taskName}, we got: ${jsonResult}`;
+                throw `unexpected Elasticsearch response when attempting to ${taskName}, we got: ${JSON.stringify(jsonResult)}`;
             } else {
                 return true;
             }
