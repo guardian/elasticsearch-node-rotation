@@ -533,6 +533,8 @@ Resources:
     Properties:
       AlarmActions:
       - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicForAlerts}
+      OKActions:
+        - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicForAlerts}
       AlarmName: !Sub Failed to complete node rotation for an elasticsearch cluster
       AlarmDescription: !Sub
         - >
@@ -549,5 +551,5 @@ Resources:
       Period: 60
       EvaluationPeriods: 1
       Statistic: Sum
-      TreatMissingData: notBreaching
+      TreatMissingData: ignore
     DependsOn: NodeRotationStepFunction
