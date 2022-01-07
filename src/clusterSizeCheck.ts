@@ -1,19 +1,19 @@
-import {AddNodeResponse, OldAndNewNodeResponse} from './utils/handlerInputs';
+import {AddNodeResponse, TargetAndNewNodeResponse} from './utils/handlerInputs';
 import {Elasticsearch} from './elasticsearch/elasticsearch';
 import {getSpecificInstance} from './aws/ec2Instances';
 import {ElasticsearchClusterStatus, ElasticsearchNode} from './elasticsearch/types';
 import {Instance} from './aws/types';
 import {getASG} from "./aws/autoscaling";
 
-export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResponse> {
+export async function handler(event: AddNodeResponse): Promise<TargetAndNewNodeResponse> {
 
     const asg = await getASG(event.asgName)
     const instanceIds = asg.Instances.map(i  => i.InstanceId)
     const newestInstance = await getSpecificInstance(instanceIds, findNewestInstance)
-    const elasticsearchClient = new Elasticsearch(event.oldestElasticsearchNode.ec2Instance.id)
+    const elasticsearchClient = new Elasticsearch(event.targetElasticSearchNode.ec2Instance.id)
     const newestNode = elasticsearchClient.getElasticsearchNode(newestInstance)
 
-    return new Promise<OldAndNewNodeResponse>((resolve, reject) => {
+    return new Promise<TargetAndNewNodeResponse>((resolve, reject) => {
         elasticsearchClient.getClusterHealth()
             .then((clusterStatus: ElasticsearchClusterStatus) => {
                 const nodesInCluster = clusterStatus.number_of_nodes;
@@ -26,9 +26,9 @@ export async function handler(event: AddNodeResponse): Promise<OldAndNewNodeResp
                 }
             })
             .then( (newestElasticsearchNode: ElasticsearchNode) => {
-                const response: OldAndNewNodeResponse = {
+                const response: TargetAndNewNodeResponse = {
                     "asgName": event.asgName,
-                    "oldestElasticsearchNode": event.oldestElasticsearchNode,
+                    "targetElasticSearchNode": event.targetElasticSearchNode,
                     "newestElasticsearchNode": newestElasticsearchNode
                 };
                 resolve(response);

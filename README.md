@@ -24,21 +24,25 @@ in this project. The frequency of node rotations is passed into the template as 
 1. Add `RotateWithElasticsearchNodeRotation: true` as a tag the AutoScaling groups containing the instances that will be rotated
 1. Update the AMI associated with your AutoScaling Groups on a regular basis (using Riff-Raff's scheduled deploy feature).
 
+
+### Running Manually
+Sometimes it's useful to rotate an ES node manually (e.g. during an ES upgrade), you can optionally pass a `targetInstanceId` in the step function input object. It's usually easiest to open an existing execution and click `New Execution` then just edit the input object. 
+
 ## Implementation
 
 This Step Function triggers a number of TypeScript lambdas, which coordinate the process of replacing a node by:
 
 * Performing various sanity checks and identifying a node to rotate
 * Adding a new node into the cluster
-* Migrating all data from the old node onto the new node (if data is present)
+* Migrating all data from the target node onto the new node (if data is present)
 * Shutting down Elasticsearch on the empty node
 * Terminating the unused EC2 instance
 
-In order to ensure that the new EC2 instance is brought up in the same Availablity Zone as the old EC2 instance, 
-the old instance is [detached](https://docs.aws.amazon.com/autoscaling/ec2/userguide/detach-instance-asg.html) from its ASG
+In order to ensure that the new EC2 instance is brought up in the same Availablity Zone as the target EC2 instance, 
+the target instance is [detached](https://docs.aws.amazon.com/autoscaling/ec2/userguide/detach-instance-asg.html) from its ASG
 during the node rotation process.
 
-In order to move all data off the old EC2 instance, the node is excluded from 
+In order to move all data off the target EC2 instance, the node is excluded from 
 [shard allocation](https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-filtering.html). 
 Shard [rebalancing](https://www.elastic.co/guide/en/elasticsearch/reference/current/shards-allocation.html#_shard_rebalancing_settings)
 is temporarily disabled during the rotation process, to prevent Elasticsearch from moving shards unnecessarily.

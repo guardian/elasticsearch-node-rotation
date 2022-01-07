@@ -4,33 +4,27 @@ export interface StateMachineInput {
     autoScalingGroupDiscoveryTagKey: string;
     ageThresholdInDays: number;
     stepFunctionArn: string;
-    asgName?: string
+    targetInstanceId?: string
 }
 
 export interface AsgInput {
     asgName: string;
+    targetElasticSearchNode: ElasticsearchNode;
 }
 
 export type AsgDiscoveryResponse =
     { skipRotation: true } |
     { skipRotation: false } & AsgInput;
 
-export interface AutoScalingGroupCheckResponse extends AsgInput {
-    instanceIds: string[];
-}
 
-export interface OldestNodeResponse extends AsgInput {
-    oldestElasticsearchNode: ElasticsearchNode;
-}
-
-export interface OldAndNewNodeResponse extends OldestNodeResponse {
+export interface TargetAndNewNodeResponse extends AsgInput {
     newestElasticsearchNode: ElasticsearchNode;
 }
 
-export interface ClusterStatusResponse extends OldestNodeResponse {
+export interface ClusterStatusResponse extends AsgInput {
     clusterStatus: string;
 }
 
-export interface AddNodeResponse extends OldestNodeResponse {
+export interface AddNodeResponse extends AsgInput {
     expectedClusterSize: number;
 }

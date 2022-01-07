@@ -116,7 +116,7 @@ Resources:
                 - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/*
                 Condition:
                   StringLike:
-                    autoscaling:ResourceTag/RotateWithElasticsearchNodeRotation: "*"
+                    autoscaling:ResourceTag/RotateWithElasticsearchNodeRotation: "true"
         - PolicyName: ElasticsearchAdminSsmPolicy
           PolicyDocument:
             Statement:
@@ -132,7 +132,7 @@ Resources:
                 Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
                 Condition:
                   StringLike:
-                    ssm:resourceTag/RotateWithElasticsearchNodeRotation: "*"
+                    ssm:resourceTag/RotateWithElasticsearchNodeRotation: "true"
         - PolicyName: SsmS3Policy
           PolicyDocument:
             Statement:
@@ -194,13 +194,13 @@ Resources:
                 - states:StartExecution
                 Resource: !Ref NodeRotationStepFunction
 
-  DiscoverAutoScalingGroupLambda:
+  GetTargetNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName: !Sub ${Stack}-enr-discover-auto-scaling-group-${Stage}
-      Description: "Looks up by tag the autoscaling groups to rotate"
-      Handler: "discoverAutoScalingGroup.handler"
+      FunctionName: !Sub ${Stack}-enr-get-target-node-${Stage}
+      Description: "Looks up by tag of the autoscaling group the most suitable instance/node to rotate"
+      Handler: "GetTargetNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${DeployS3Bucket}
@@ -248,24 +248,6 @@ Resources:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
-  GetOldestNodeLambda:
-    Type: "AWS::Lambda::Function"
-    DependsOn: NodeRotationLambdaRole
-    Properties:
-      FunctionName: !Sub ${Stack}-enr-get-oldest-node-${Stage}
-      Description: "Finds the oldest node in an Elasticsearch cluster"
-      Handler: "getOldestNode.handler"
-      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
-      Code:
-        S3Bucket: !Sub ${DeployS3Bucket}
-        S3Key: !Sub ${DeployS3Key}
-      MemorySize: 512
-      Runtime: nodejs14.x
-      Timeout: 300
-      Environment:
-        Variables:
-          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
-
   AddNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
@@ -302,13 +284,13 @@ Resources:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
 
-  ReattachOldInstanceLambda:
+  ReattachTargetInstanceLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
-      FunctionName: !Sub ${Stack}-enr-reattach-old-instance-${Stage}
-      Description: "Reattaches old instance to the ASG"
-      Handler: "reattachOldInstance.handler"
+      FunctionName: !Sub ${Stack}-enr-reattach-target-instance-${Stage}
+      Description: "Reattaches target instance to the ASG"
+      Handler: "reattachTargetInstance.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${DeployS3Bucket}
@@ -361,7 +343,7 @@ Resources:
     DependsOn: NodeRotationLambdaRole
     Properties:
       FunctionName: !Sub ${Stack}-enr-remove-node-${Stage}
-      Description: "Removes the oldest node in the cluster (and terminates the instance) before re-enabling re-balancing"
+      Description: "Removes the target node (typically oldest) from the cluster (and terminates the instance) before re-enabling re-balancing"
       Handler: "removeNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
@@ -377,13 +359,12 @@ Resources:
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn:
-    - DiscoverAutoScalingGroupLambda
+    - GetTargetNodeLambda
     - AutoScalingGroupCheckLambda
-    - GetOldestNodeLambda
     - ClusterStatusCheckLambda
     - AddNodeLambda
     - ClusterSizeCheckLambda
-    - ReattachOldInstanceLambda
+    - ReattachTargetInstanceLambda
     - MigrateShardsLambda
     - ShardMigrationCheckLambda
     - RemoveNodeLambda
@@ -395,11 +376,11 @@ Resources:
           - |
            {
              "Comment": "Elasticsearch Node Rotation",
-             "StartAt": "DiscoverAutoScalingGroup",
+             "StartAt": "GetTargetNode",
              "States": {
-                "DiscoverAutoScalingGroup": {
+                "GetTargetNode": {
                   "Type": "Task",
-                  "Resource": "${DiscoverAutoScalingGroupArn}",
+                  "Resource": "${GetTargetNodeArn}",
                   "Next": "CheckSkipRotation"
                 },
                 "CheckSkipRotation": {
@@ -419,11 +400,6 @@ Resources:
                 "AutoScalingGroupCheck": {
                   "Type": "Task",
                   "Resource": "${AutoScalingGroupCheckArn}",
-                  "Next": "GetOldestNode"
-                },
-                "GetOldestNode": {
-                  "Type": "Task",
-                  "Resource": "${GetOldestNodeArn}",
                   "Next": "CheckClusterStatus"
                 },
                 "CheckClusterStatus": {
@@ -456,7 +432,7 @@ Resources:
                 "ClusterSizeCheck": {
                   "Type": "Task",
                   "Resource": "${ClusterSizeCheckArn}",
-                  "Next": "ReattachOldInstance",
+                  "Next": "ReattachTargetInstance",
                   "Retry": [ {
                     "ErrorEquals": [ "States.ALL" ],
                     "IntervalSeconds": 30,
@@ -464,9 +440,9 @@ Resources:
                     "BackoffRate": 1.0
                     } ]
                 },
-                "ReattachOldInstance": {
+                "ReattachTargetInstance": {
                   "Type": "Task",
-                  "Resource": "${ReattachOldInstanceArn}",
+                  "Resource": "${ReattachTargetInstanceArn}",
                   "Next": "MigrateShards"
                 },
                 "MigrateShards": {
@@ -494,15 +470,14 @@ Resources:
             }
           -
             AutoScalingGroupCheckArn: !GetAtt AutoScalingGroupCheckLambda.Arn
-            GetOldestNodeArn: !GetAtt GetOldestNodeLambda.Arn
             ClusterStatusCheckArn: !GetAtt ClusterStatusCheckLambda.Arn
             AddNodeArn: !GetAtt AddNodeLambda.Arn
             ClusterSizeCheckArn: !GetAtt ClusterSizeCheckLambda.Arn
-            ReattachOldInstanceArn: !GetAtt ReattachOldInstanceLambda.Arn
+            ReattachTargetInstanceArn: !GetAtt ReattachTargetInstanceLambda.Arn
             MigrateShardsArn: !GetAtt MigrateShardsLambda.Arn
             ShardMigrationCheckArn: !GetAtt ShardMigrationCheckLambda.Arn
             RemoveNodeArn: !GetAtt RemoveNodeLambda.Arn
-            DiscoverAutoScalingGroupArn: !GetAtt DiscoverAutoScalingGroupLambda.Arn
+            GetTargetNodeArn: !GetAtt GetTargetNodeLambda.Arn
       RoleArn: !GetAtt StatesExecutionRole.Arn
 
   NodeRotationSchedule:
@@ -520,7 +495,8 @@ Resources:
             {
               "autoScalingGroupDiscoveryTagKey": "RotateWithElasticsearchNodeRotation",
               "ageThresholdInDays": ${AgeThresholdInDays},
-              "stepFunctionArn": "${StepFunctionArn}"
+              "stepFunctionArn": "${StepFunctionArn}",
+              "targetInstanceId": null
             }
           -
            StepFunctionArn: !Ref NodeRotationStepFunction
