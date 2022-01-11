@@ -200,7 +200,7 @@ Resources:
     Properties:
       FunctionName: !Sub ${Stack}-enr-get-target-node-${Stage}
       Description: "Looks up by tag of the autoscaling group the most suitable instance/node to rotate"
-      Handler: "GetTargetNode.handler"
+      Handler: "getTargetNode.handler"
       Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
       Code:
         S3Bucket: !Sub ${DeployS3Bucket}
