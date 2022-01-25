@@ -27,9 +27,9 @@ export function attachInstance(instance: Instance, asgName: string): Promise<{}>
 
 export function terminateInstanceInASG(instance: Instance): Promise<AutoScaling.Types.ActivityType> {
     console.log(`Terminating instance ${instance.id}`);
-    const params = { 
+    const params = {
         InstanceId: instance.id,
-        ShouldDecrementDesiredCapacity: true 
+        ShouldDecrementDesiredCapacity: true
     };
     return retry(() => awsAutoscaling.terminateInstanceInAutoScalingGroup(params).promise(), `terminating instance ${instance.id}`, 5)
 }
@@ -47,4 +47,13 @@ export async function getASG(asgName: string): Promise<AutoScalingGroup> {
     } else {
         return groups.AutoScalingGroups[0]
     }
+}
+
+export async function getASGsByTag(tagKey: string, tagValue: string): Promise<AutoScalingGroup[]> {
+    return (await retry<AutoScaling.Types.AutoScalingGroupsType>(() => awsAutoscaling.describeAutoScalingGroups({
+          Filters: [
+              { "Name": `tag${tagValue ? `:${tagKey}` : "-key"}`, Values: [tagValue || tagKey] }
+          ]
+      }).promise(), `finding ASGs with tag '${tagKey}' equal to ${tagValue}`, 5)
+    ).AutoScalingGroups;
 }
