@@ -58,6 +58,17 @@ deployments:
     parameters:
       bucket: media-service-dist
   
+  infosec-enr-cloudformation:
+    stacks: [infosec]
+    template: cloudformation
+    app: infosec-wazuh-es-rotation
+  infosec-enr-lambda:
+    stacks: [infosec]
+    dependencies: [infosec-enr-cloudformation]
+    template: lambda
+    parameters:
+      bucket: infosec-dist
+
   # Giant (pfi) uses elasticsearch-node-rotation but we don't allow continuous deployment
   # of it into the account to minimise the deployment points for code that has access
   # to the data in Giant itself.
