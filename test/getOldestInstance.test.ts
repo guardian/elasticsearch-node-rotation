@@ -1,5 +1,5 @@
 import {Instance} from '../src/aws/types'
-import {findOldestInstance} from '../src/getOldestNode'
+import {findOldestInstance} from "../src/getTargetNode";
 
 function createDate(date: Date, days: number): Date {
     let result = new Date(date);

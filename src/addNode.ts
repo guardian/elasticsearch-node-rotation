@@ -6,19 +6,19 @@ import {ElasticsearchClusterStatus} from './elasticsearch/types';
 
 export async function handler(event: ClusterStatusResponse): Promise<AddNodeResponse> {
 
-    const oldestInstance: Instance = event.oldestElasticsearchNode.ec2Instance;
+    const targetInstance: Instance = event.targetElasticSearchNode.ec2Instance;
     const asg: string = event.asgName;
-    const elasticsearchClient = new Elasticsearch(oldestInstance.id)
+    const elasticsearchClient = new Elasticsearch(targetInstance.id)
 
     return new Promise<AddNodeResponse>((resolve, reject) => {
 
         elasticsearchClient.updateRebalancingStatus("none")
-            .then(() => detachInstance(oldestInstance, asg))
+            .then(() => detachInstance(targetInstance, asg))
             .then(() => elasticsearchClient.getClusterHealth())
             .then((clusterStatus: ElasticsearchClusterStatus) => {
                 const response: AddNodeResponse = {
                     "asgName": asg,
-                    "oldestElasticsearchNode": event.oldestElasticsearchNode,
+                    "targetElasticSearchNode": event.targetElasticSearchNode,
                     "expectedClusterSize": clusterStatus.number_of_nodes + 1
                 };
                 resolve(response);

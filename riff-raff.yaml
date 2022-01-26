@@ -13,13 +13,12 @@ templates:
     parameters:
       fileName: elasticsearch-node-rotation.zip
       functionNames:
-      - -enr-discover-auto-scaling-group-
+      - -enr-get-target-node-
       - -enr-auto-scaling-group-check-
       - -enr-cluster-status-check-
-      - -enr-get-oldest-node-
       - -enr-add-node-
       - -enr-cluster-size-check-
-      - -enr-reattach-old-instance-
+      - -enr-reattach-target-instance-
       - -enr-migrate-shards-
       - -enr-shard-migration-check-
       - -enr-remove-node-
@@ -46,7 +45,7 @@ deployments:
     template: lambda
     parameters:
       bucket: ophan-dist
-  
+
   grid-enr-cloudformation:
     stacks: [media-service]
     template: cloudformation
@@ -68,6 +67,7 @@ deployments:
     template: lambda
     parameters:
       bucket: infosec-dist
+
 
   # Giant (pfi) uses elasticsearch-node-rotation but we don't allow continuous deployment
   # of it into the account to minimise the deployment points for code that has access
