@@ -19,7 +19,7 @@ ASG (AutoScaling Group).
 1. Create an S3 bucket (or choose an existing one), to store SSM command output. This is only required temporarily, so you may wish to 
 [configure object expiration](https://docs.aws.amazon.com/AmazonS3/latest/dev/lifecycle-expire-general-considerations.html) for this bucket.
 1. Ensure that all EC2 instances have the [required permissions](#aws-permissions).
-1. Create a new Cloudformation stack, using the [template](https://github.com/guardian/elasticsearch-node-rotation/blob/master/cloudformation.yaml)
+1. Create a new Cloudformation stack, using the [template](https://github.com/guardian/elasticsearch-node-rotation/blob/main/cloudformation.yaml)
 in this project. The frequency of node rotations is passed into the template as a parameter.
 1. Add `RotateWithElasticsearchNodeRotation: true` as a tag the AutoScaling groups containing the instances that will be rotated
 1. Update the AMI associated with your AutoScaling Groups on a regular basis (using Riff-Raff's scheduled deploy feature).
@@ -51,7 +51,7 @@ is temporarily disabled during the rotation process, to prevent Elasticsearch fr
 
 This Step Function requires a number of IAM permissions in order to control the number of running EC2 instances 
 and run commands against Elasticsearch nodes (which is achieved via SSM's EC2 Run Command). Full details of the permissions
-required can be found in this project's Cloudformation [template](https://github.com/guardian/elasticsearch-node-rotation/blob/master/cloudformation.yaml)
+required can be found in this project's Cloudformation [template](https://github.com/guardian/elasticsearch-node-rotation/blob/main/cloudformation.yaml)
 
 The EC2 instances (which are subject to rotation) will require the following IAM permissions in order to handle incoming SSM commands: 
 
