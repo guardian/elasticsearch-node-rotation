@@ -35,8 +35,8 @@ export class Elasticsearch {
     getElasticsearchNode(instance: Instance): Promise<ElasticsearchNode> {
         console.log(`Searching for Elasticsearch node with private ip: ${instance.privateIp}`);
         return this.execute(`/_nodes/${instance.privateIp}`).then((json: any) => {
+            console.log(`Node json: ${JSON.stringify(json)}`);
             if (json._nodes.total === 1) {
-                console.log(`Node json: ${json}`);
                 const nodeId: string = Object.keys(json.nodes)[0];
                 const isMaster: boolean = json.nodes[nodeId].settings.node.master == 'true';
                 return new ElasticsearchNode(instance, nodeId, isMaster);
