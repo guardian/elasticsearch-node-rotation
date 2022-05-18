@@ -68,6 +68,16 @@ deployments:
     parameters:
       bucket: infosec-dist
 
+  content-api-enr-cloudformation:
+    stacks: [ content-api]
+    template: cloudformation
+    app: elasticsearch-node-rotation
+  content-api-enr-lambda:
+    stacks: [ content-api ]
+    dependencies: [ content-api-enr-cloudformation ]
+    template: lambda
+    parameters:
+      bucket: content-api-dist
 
   # Giant (pfi) uses elasticsearch-node-rotation but we don't allow continuous deployment
   # of it into the account to minimise the deployment points for code that has access
