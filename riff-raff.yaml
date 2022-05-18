@@ -71,7 +71,7 @@ deployments:
   content-api-enr-cloudformation:
     stacks: [ content-api]
     template: cloudformation
-    app: content-api-es-node-rotation
+    app: elasticsearch-node-rotation
   content-api-enr-lambda:
     stacks: [ content-api ]
     dependencies: [ content-api-enr-cloudformation ]
