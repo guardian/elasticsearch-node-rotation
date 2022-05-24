@@ -1,0 +1,16 @@
+{
+  "projectName": "elasticsearch-node-rotation",
+  "vcsURL": "https://github.com/guardian/elasticsearch-node-rotation",
+  "actions": [
+    {
+      "action": "elasticsearch-node-rotation-cloudformation",
+      "path": "cloudformation.yaml",
+      "compress": false
+    },
+    {
+      "action": "elasticsearch-node-rotation",
+      "path": "target",
+      "compress": "zip"
+    }
+  ]
+}

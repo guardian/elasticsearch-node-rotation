@@ -6,7 +6,7 @@ templates:
     app: elasticsearch-node-rotation
     contentDirectory: elasticsearch-node-rotation-cloudformation
     parameters:
-      templatePath: cloudformation/cloudformation.yaml
+      templatePath: cloudformation.yaml
   lambda:
     type: aws-lambda
     contentDirectory: elasticsearch-node-rotation
@@ -56,7 +56,7 @@ deployments:
     template: lambda
     parameters:
       bucket: media-service-dist
-  
+
   infosec-enr-cloudformation:
     stacks: [infosec]
     template: cloudformation
