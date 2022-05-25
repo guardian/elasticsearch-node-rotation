@@ -77,3 +77,15 @@ Statement:
   - arn:aws:s3:::<your_bucket_name_here>/*
 ```
 
+Contributing and Testing Changes
+---------------------------------
+
+This project is deployed to multiple AWS accounts. Consequently, you should ensure that a node rotation can still be performed successfully before merging any changes to `main`.
+
+Unfortunately, there is no pre-production environment available for testing changes. Consequently, we recommend using Riff-Raff to deploy your branch to an individual account in order to validate your changes in production. If in doubt, testing changes against the ELK stack (in the Deploy Tools account) is a good place to start. 
+
+In order to do this, select `Preview` from the deployment page (instead of `Deploy Now`). Next `Deselect all` and then manually select all deployment tasks for a specific account. Once you’ve done this you can `Preview with selections`, check the list of tasks and then `Deploy`.
+
+Once you have confirmed that the change works as expected, the PR can be merged. This will automatically roll the change out across several AWS accounts via Riff-Raff. Please also inform the Investigations & Reporting team, as [they use a different deployment mechanism and will need to pick up the change manually](https://github.com/guardian/elasticsearch-node-rotation/blob/66b2640bdbf006e887edfd3467c662d0c7c4756b/riff-raff.yaml#L87).
+
+If the change adds or removes a feature, significantly alters AWS resources or is considered to be especially risky, you might also want to inform the teams who own the affected AWS accounts via Chat/email. 
