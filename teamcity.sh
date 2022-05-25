@@ -12,7 +12,7 @@ nvm use
 
 npm install -g yarn
 
-yarn install
+yarn install --frozen-lockfile
 # Will place .js files in target
 yarn run clean
 yarn run build
