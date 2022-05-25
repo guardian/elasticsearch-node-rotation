@@ -1,4 +1,3 @@
-import * as sortBy from 'lodash/sortBy';
 import {AsgDiscoveryResponse, StateMachineInput} from './utils/handlerInputs';
 import {totalRunningExecutions} from "./aws/stepFunctions";
 import {getInstancesByTag} from './aws/ec2Instances';
@@ -66,4 +65,16 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
     }
 }
 
-export const findOldestInstance = (instances: Instance[]) => sortBy(instances, instance => instance.launchTime)[0]
+export const findOldestInstance = (instances: Instance[]): Instance => {
+    const [head] = instances.sort(({ launchTime: launchTimeA }: Instance, { launchTime: launchTimeB }: Instance) => {
+        if(launchTimeA < launchTimeB) {
+            return -1;
+        }
+        if(launchTimeA > launchTimeB) {
+            return 1;
+        }
+        return 0;
+    });
+
+    return head;
+}
