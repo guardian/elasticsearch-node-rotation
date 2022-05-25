@@ -8,7 +8,7 @@ import {getASG} from "./aws/autoscaling";
 export async function handler(event: AddNodeResponse): Promise<TargetAndNewNodeResponse> {
 
     const asg = await getASG(event.asgName)
-    const instanceIds = asg.Instances.map(i  => i.InstanceId)
+    const instanceIds: string[] = asg.Instances?.map(i  => i.InstanceId) ?? [];
     const newestInstance = await getSpecificInstance(instanceIds, findNewestInstance)
     const elasticsearchClient = new Elasticsearch(event.targetElasticSearchNode.ec2Instance.id)
     const newestNode = elasticsearchClient.getElasticsearchNode(newestInstance)

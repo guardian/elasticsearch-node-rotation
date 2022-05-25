@@ -1,5 +1,6 @@
 import {Instance} from './types';
 import {DescribeInstancesResult, Instance as EC2Instance} from 'aws-sdk/clients/ec2';
+import {AWSError} from "aws-sdk/lib/error";
 
 const AWS = require('aws-sdk');
 const awsEc2 = new AWS.EC2();
@@ -12,30 +13,37 @@ function buildInstance(instance: EC2Instance): Instance {
         throw new Error(`Missing aws:autoscaling:groupName tag on instance ${instance.InstanceId}`);
     }
 
-    return new Instance(instance.InstanceId, instance.LaunchTime, instance.PrivateIpAddress, autoScalingGroupNameTag!.Value);
+    const { InstanceId, LaunchTime, PrivateIpAddress } = instance;
+    const asgTagValue = autoScalingGroupNameTag.Value;
+
+    if(InstanceId && LaunchTime && PrivateIpAddress && asgTagValue) {
+        return new Instance(InstanceId, LaunchTime, PrivateIpAddress, asgTagValue);
+    } else {
+        throw new Error(`We don't have enough information. All of these must be defined ${{InstanceId, LaunchTime, PrivateIpAddress, AsgGroupNameTagValue: asgTagValue}}`);
+    }
 }
 
 function buildInstances(data: DescribeInstancesResult): Instance[] {
-    const instanceArrays = data.Reservations.map(arrays => arrays.Instances);
-    const instances: Instance[] = instanceArrays.concat.apply([], instanceArrays).map(buildInstance);
-
-    return instances;
+    return data.Reservations
+        ? data.Reservations.map(arrays => arrays.Instances ?? [])
+            .flat()
+            .map(buildInstance)
+        : [];
 }
 
-export function getSpecificInstance(instanceIds: string[], instanceFilter: InstanceFilter): Promise<Instance> {
+export async function getSpecificInstance(instanceIds: string[], instanceFilter: InstanceFilter): Promise<Instance> {
     console.log(`Fetching details for: ${instanceIds}`);
     const params = { InstanceIds: instanceIds };
-    const requestPromise = awsEc2.describeInstances(params).promise();
-    return requestPromise.then(
-        function(data: DescribeInstancesResult) {
-            const instances = buildInstances(data);
-            return instanceFilter(instances);
-        },
-        function (error) {
-            console.log(error, error.stack, error.statusCode);
-            return error;
-        }
-    )
+
+    try {
+        const data = await awsEc2.describeInstances(params).promise();
+        const instances = buildInstances(data);
+        return instanceFilter(instances);
+    } catch (error) {
+        const {stack, statusCode} = error as AWSError; // This isn't ideal. See https://github.com/aws/aws-sdk-js/issues/2611.
+        console.log(error, stack, statusCode);
+        return Promise.reject(error);
+    }
 }
 
 export async function getInstancesByTag(tagKey: string, tagValue?: string): Promise<Instance[]> {
