@@ -8,7 +8,7 @@ templates:
     app: elasticsearch-node-rotation
     contentDirectory: elasticsearch-node-rotation-cloudformation
     parameters:
-      templatePath: cloudformation.yaml
+      templatePath: Elasticsearch-Node-Rotation.template.json
   lambda:
     type: aws-lambda
     contentDirectory: elasticsearch-node-rotation

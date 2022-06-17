@@ -4,7 +4,7 @@
   "actions": [
     {
       "action": "elasticsearch-node-rotation-cloudformation",
-      "path": "cloudformation.yaml",
+      "path": "cdk/cdk.out/Elasticsearch-Node-Rotation.template.json",
       "compress": false
     },
     {

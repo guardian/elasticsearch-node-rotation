@@ -12,6 +12,15 @@ nvm use
 
 npm install -g yarn
 
+(
+  cd cdk
+  # Set --yes to install projen without a prompt
+  npx projen --yes
+  npx projen lint
+  npx projen test
+  npx projen synth
+)
+
 yarn install --frozen-lockfile
 
 # Will place .js files in target
