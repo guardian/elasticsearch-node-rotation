@@ -1,11 +1,19 @@
-import type { GuStackProps } from '@guardian/cdk/lib/constructs/core';
-import { GuStack } from '@guardian/cdk/lib/constructs/core';
-import type { App } from 'aws-cdk-lib';
+import { join } from "path";
+import type { GuStackProps } from "@guardian/cdk/lib/constructs/core";
+import { GuStack } from "@guardian/cdk/lib/constructs/core";
+import type { App } from "aws-cdk-lib";
+import { CfnInclude } from "aws-cdk-lib/cloudformation-include";
 
-export class MyStack extends GuStack {
+export class ElasticsearchNodeRotation extends GuStack {
 	constructor(scope: App, id: string, props: GuStackProps) {
 		super(scope, id, props);
-
-		// Begin adding your constructs and patterns here.
+		const yamlTemplateFilePath = join(
+			__dirname,
+			"../..",
+			"cloudformation.yaml"
+		);
+		new CfnInclude(this, "YamlTemplate", {
+			templateFile: yamlTemplateFilePath,
+		});
 	}
 }

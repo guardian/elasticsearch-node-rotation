@@ -1,14 +1,12 @@
 import { App } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { MyStack } from './stack';
+import { ElasticsearchNodeRotation } from './stack';
+import {props} from "./app";
 
-describe('The IntegrationTest stack', () => {
+describe('The generated stack', () => {
 	it('matches the snapshot', () => {
 		const app = new App();
-		const stack = new MyStack(app, 'IntegrationTest', {
-			stack: 'cdk',
-			stage: 'TEST',
-		});
+		const stack = new ElasticsearchNodeRotation(app, "Elasticsearch-Node-Rotation", props);
 		const template = Template.fromStack(stack);
 		expect(template.toJSON()).toMatchSnapshot();
 	});

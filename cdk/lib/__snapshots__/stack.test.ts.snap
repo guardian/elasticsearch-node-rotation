@@ -1,3 +1,1166 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`The IntegrationTest stack matches the snapshot 1`] = `Object {}`;
+exports[`The generated stack matches the snapshot 1`] = `
+Object {
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Conditions": Object {
+    "ShouldCreateSsmOutputBucket": Object {
+      "Fn::Equals": Array [
+        Object {
+          "Ref": "SsmOutputBucketName",
+        },
+        "",
+      ],
+    },
+  },
+  "Description": "Step Function for rotating ElasticSearch nodes (regardless of their Stage, i.e. the INFRA/PROD instance of this stack will rotate oldest ES instances belonging to any Stage, assuming the instances have the \`RotateWithElasticsearchNodeRotation\` tag set to true)",
+  "Parameters": Object {
+    "AgeThresholdInDays": Object {
+      "Default": 7,
+      "Description": "The number of days old an instance must be before it will be rotated. This avoids excessively rotating instances.",
+      "Type": "Number",
+    },
+    "App": Object {
+      "Default": "elasticsearch-node-rotation",
+      "Description": "App name defined in riff-raff.yaml to support per-account continuous deployment of this project",
+      "Type": "String",
+    },
+    "DeployS3Bucket": Object {
+      "Description": "Bucket which contains .zip file used by lambda functions e.g. deploy-tools-dist.",
+      "Type": "String",
+    },
+    "DeployS3Key": Object {
+      "Description": "Key for .zip file used by lambda functions e.g. <stack>/<stage>/<app>/<app>.zip.",
+      "Type": "String",
+    },
+    "RotationCronExpression": Object {
+      "Description": "Cron expression which determines how often node rotation occurs.",
+      "Type": "String",
+    },
+    "SNSTopicForAlerts": Object {
+      "Description": "The name of the SNS topic used for alerting in the case of a failed rotation attempt.",
+      "Type": "String",
+    },
+    "SsmOutputBucketName": Object {
+      "Default": "",
+      "Description": "OPTIONAL! Bucket used to store SSM command output. The instances which receive SSM commands must have PutObject permissions for this bucket. If this is not provided a bucket will be created as part of this stack.",
+      "Type": "String",
+    },
+    "Stack": Object {
+      "Description": "Stack name defined in riff-raff.yaml to support per-account continuous deployment of this project. Not required if the template will be updated manually.",
+      "Type": "String",
+    },
+    "Stage": Object {
+      "Default": "INFRA",
+      "Description": "Stage name for Riff-Raff deploys to support per-account continuous deployment of this project",
+      "Type": "String",
+    },
+  },
+  "Resources": Object {
+    "AddNodeLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Disables re-balancing before adding a new node into the Elasticsearch cluster",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-add-node-\${Stage}",
+        },
+        "Handler": "addNode.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "AutoScalingGroupCheckLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Checks that a single Auto Scaling Group is returned with a maximum limit greater than the desired capacity",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-auto-scaling-group-check-\${Stage}",
+        },
+        "Handler": "autoScalingGroupCheck.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "ClusterSizeCheckLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Confirms that the Elasticsearch cluster is the expected size",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-cluster-size-check-\${Stage}",
+        },
+        "Handler": "clusterSizeCheck.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "ClusterStatusCheckLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Checks the status of an Elasticsearch cluster",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-cluster-status-check-\${Stage}",
+        },
+        "Handler": "clusterStatusCheck.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "ExecutionFailureAlarm": Object {
+      "DependsOn": Array [
+        "NodeRotationStepFunction",
+      ],
+      "Properties": Object {
+        "AlarmActions": Array [
+          Object {
+            "Fn::Sub": "arn:aws:sns:\${AWS::Region}:\${AWS::AccountId}:\${SNSTopicForAlerts}",
+          },
+        ],
+        "AlarmDescription": Object {
+          "Fn::Sub": Array [
+            "Elasticsearch Node Rotation failed - please see Step Function execution history for \${StepFunctionName}. You can find the affected auto scaling group by clicking on the AutoScalingGroupCheck node in the execution history and clicking \\"Step Input\\"
+",
+            Object {
+              "StepFunctionName": Object {
+                "Fn::GetAtt": "NodeRotationStepFunction.Name",
+              },
+            },
+          ],
+        },
+        "AlarmName": Object {
+          "Fn::Sub": "Failed to complete node rotation for an elasticsearch cluster",
+        },
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "Dimensions": Array [
+          Object {
+            "Name": "StateMachineArn",
+            "Value": Object {
+              "Ref": "NodeRotationStepFunction",
+            },
+          },
+        ],
+        "EvaluationPeriods": 1,
+        "MetricName": "ExecutionsFailed",
+        "Namespace": "AWS/States",
+        "OKActions": Array [
+          Object {
+            "Fn::Sub": "arn:aws:sns:\${AWS::Region}:\${AWS::AccountId}:\${SNSTopicForAlerts}",
+          },
+        ],
+        "Period": 60,
+        "Statistic": "Sum",
+        "Threshold": 1,
+        "TreatMissingData": "ignore",
+      },
+      "Type": "AWS::CloudWatch::Alarm",
+    },
+    "GetTargetNodeLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Looks up by tag of the autoscaling group the most suitable instance/node to rotate",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-get-target-node-\${Stage}",
+        },
+        "Handler": "getTargetNode.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "MigrateShardsLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Migrates shards between two nodes",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-migrate-shards-\${Stage}",
+        },
+        "Handler": "migrateShards.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "NodeRotationBucketSsmParameter": Object {
+      "Properties": Object {
+        "Name": "/account/services/node-rotation-ssm-output-bucket-name",
+        "Tags": Object {
+          "Stack": "elasticsearch-node-rotation",
+          "Stage": "INFRA",
+          "gu:cdk:version": "TEST",
+          "gu:repo": "guardian/elasticsearch-node-rotation",
+        },
+        "Type": "String",
+        "Value": Object {
+          "Fn::If": Array [
+            "ShouldCreateSsmOutputBucket",
+            Object {
+              "Ref": "NodeRotationSsmOutputBucket",
+            },
+            Object {
+              "Ref": "SsmOutputBucketName",
+            },
+          ],
+        },
+      },
+      "Type": "AWS::SSM::Parameter",
+    },
+    "NodeRotationLambdaRole": Object {
+      "Properties": Object {
+        "AssumeRolePolicyDocument": Object {
+          "Statement": Array [
+            Object {
+              "Action": Array [
+                "sts:AssumeRole",
+              ],
+              "Effect": "Allow",
+              "Principal": Object {
+                "Service": Array [
+                  "lambda.amazonaws.com",
+                ],
+              },
+            },
+          ],
+        },
+        "Path": "/",
+        "Policies": Array [
+          Object {
+            "PolicyDocument": Object {
+              "Statement": Array [
+                Object {
+                  "Action": Array [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "lambda:InvokeFunction",
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*",
+                },
+              ],
+            },
+            "PolicyName": "LambdaPolicy",
+          },
+          Object {
+            "PolicyDocument": Object {
+              "Statement": Array [
+                Object {
+                  "Action": Array [
+                    "autoscaling:DescribeAutoScalingGroups",
+                    "ec2:DescribeInstances",
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*",
+                },
+                Object {
+                  "Action": Array [
+                    "autoscaling:DetachInstances",
+                    "autoscaling:AttachInstances",
+                    "autoscaling:TerminateInstanceInAutoScalingGroup",
+                  ],
+                  "Condition": Object {
+                    "StringLike": Object {
+                      "autoscaling:ResourceTag/RotateWithElasticsearchNodeRotation": "true",
+                    },
+                  },
+                  "Effect": "Allow",
+                  "Resource": Array [
+                    Object {
+                      "Fn::Sub": "arn:aws:autoscaling:\${AWS::Region}:\${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/*",
+                    },
+                  ],
+                },
+              ],
+            },
+            "PolicyName": "ElasticsearchAdminAsgPolicy",
+          },
+          Object {
+            "PolicyDocument": Object {
+              "Statement": Array [
+                Object {
+                  "Action": "ssm:GetCommandInvocation",
+                  "Effect": "Allow",
+                  "Resource": "*",
+                },
+                Object {
+                  "Action": "ssm:SendCommand",
+                  "Effect": "Allow",
+                  "Resource": Object {
+                    "Fn::Sub": "arn:aws:ssm:\${AWS::Region}::document/AWS-RunShellScript",
+                  },
+                },
+                Object {
+                  "Action": "ssm:SendCommand",
+                  "Condition": Object {
+                    "StringLike": Object {
+                      "ssm:resourceTag/RotateWithElasticsearchNodeRotation": "true",
+                    },
+                  },
+                  "Effect": "Allow",
+                  "Resource": Object {
+                    "Fn::Sub": "arn:aws:ec2:\${AWS::Region}:\${AWS::AccountId}:instance/*",
+                  },
+                },
+              ],
+            },
+            "PolicyName": "ElasticsearchAdminSsmPolicy",
+          },
+          Object {
+            "PolicyDocument": Object {
+              "Statement": Array [
+                Object {
+                  "Action": "s3:ListBucket",
+                  "Effect": "Allow",
+                  "Resource": Array [
+                    Object {
+                      "Fn::Sub": "arn:aws:s3:::\${NodeRotationBucketSsmParameter.Value}",
+                    },
+                  ],
+                },
+                Object {
+                  "Action": "s3:GetObject",
+                  "Effect": "Allow",
+                  "Resource": Array [
+                    Object {
+                      "Fn::Sub": "arn:aws:s3:::\${NodeRotationBucketSsmParameter.Value}/*",
+                    },
+                  ],
+                },
+              ],
+            },
+            "PolicyName": "SsmS3Policy",
+          },
+          Object {
+            "PolicyDocument": Object {
+              "Statement": Array [
+                Object {
+                  "Action": "states:ListExecutions",
+                  "Effect": "Allow",
+                  "Resource": "*",
+                },
+              ],
+            },
+            "PolicyName": "QueryStepFunctionHistory",
+          },
+        ],
+        "RoleName": Object {
+          "Fn::Sub": "\${Stack}-NodeRotation-\${Stage}",
+        },
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "NodeRotationSchedule": Object {
+      "DependsOn": Array [
+        "NodeRotationStepFunction",
+        "TriggerExecutionRole",
+      ],
+      "Properties": Object {
+        "Name": Object {
+          "Fn::Sub": "\${Stack}-node-rotation-schedule-\${Stage}",
+        },
+        "ScheduleExpression": Object {
+          "Ref": "RotationCronExpression",
+        },
+        "State": "ENABLED",
+        "Targets": Array [
+          Object {
+            "Arn": Object {
+              "Ref": "NodeRotationStepFunction",
+            },
+            "Id": Object {
+              "Fn::GetAtt": "NodeRotationStepFunction.Name",
+            },
+            "Input": Object {
+              "Fn::Sub": Array [
+                "{
+  \\"autoScalingGroupDiscoveryTagKey\\": \\"RotateWithElasticsearchNodeRotation\\",
+  \\"ageThresholdInDays\\": \${AgeThresholdInDays},
+  \\"stepFunctionArn\\": \\"\${StepFunctionArn}\\",
+  \\"targetInstanceId\\": null
+}
+",
+                Object {
+                  "StepFunctionArn": Object {
+                    "Ref": "NodeRotationStepFunction",
+                  },
+                },
+              ],
+            },
+            "RoleArn": Object {
+              "Fn::GetAtt": "TriggerExecutionRole.Arn",
+            },
+          },
+        ],
+      },
+      "Type": "AWS::Events::Rule",
+    },
+    "NodeRotationSsmOutputBucket": Object {
+      "Condition": "ShouldCreateSsmOutputBucket",
+      "Properties": Object {
+        "BucketEncryption": Object {
+          "ServerSideEncryptionConfiguration": Array [
+            Object {
+              "ServerSideEncryptionByDefault": Object {
+                "SSEAlgorithm": "aws:kms",
+              },
+            },
+          ],
+        },
+        "LifecycleConfiguration": Object {
+          "Rules": Array [
+            Object {
+              "ExpirationInDays": 14,
+              "Id": "RetentionRule",
+              "Status": "Enabled",
+              "Transitions": Array [
+                Object {
+                  "StorageClass": "GLACIER",
+                  "TransitionInDays": 1,
+                },
+              ],
+            },
+          ],
+        },
+        "PublicAccessBlockConfiguration": Object {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true,
+        },
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+      },
+      "Type": "AWS::S3::Bucket",
+    },
+    "NodeRotationStepFunction": Object {
+      "DependsOn": Array [
+        "AddNodeLambda",
+        "AutoScalingGroupCheckLambda",
+        "ClusterSizeCheckLambda",
+        "ClusterStatusCheckLambda",
+        "GetTargetNodeLambda",
+        "MigrateShardsLambda",
+        "ReattachTargetInstanceLambda",
+        "RemoveNodeLambda",
+        "ShardMigrationCheckLambda",
+      ],
+      "Properties": Object {
+        "DefinitionString": Object {
+          "Fn::Sub": Array [
+            "{
+  \\"Comment\\": \\"Elasticsearch Node Rotation\\",
+  \\"StartAt\\": \\"GetTargetNode\\",
+  \\"States\\": {
+     \\"GetTargetNode\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${GetTargetNodeArn}\\",
+       \\"Next\\": \\"CheckSkipRotation\\"
+     },
+     \\"CheckSkipRotation\\": {
+       \\"Type\\": \\"Choice\\",
+       \\"Choices\\": [
+         {
+           \\"Variable\\": \\"$.skipRotation\\",
+           \\"BooleanEquals\\": false,
+           \\"Next\\": \\"AutoScalingGroupCheck\\"
+         }
+       ],
+       \\"Default\\": \\"StopAsSkippingRotation\\"
+     },
+     \\"StopAsSkippingRotation\\": {
+       \\"Type\\": \\"Succeed\\"
+     },
+     \\"AutoScalingGroupCheck\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${AutoScalingGroupCheckArn}\\",
+       \\"Next\\": \\"CheckClusterStatus\\"
+     },
+     \\"CheckClusterStatus\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${ClusterStatusCheckArn}\\",
+       \\"Next\\": \\"StatusIsGreen\\"
+     },
+     \\"StatusIsGreen\\": {
+       \\"Type\\": \\"Choice\\",
+       \\"Choices\\": [
+         {
+           \\"Not\\": {
+             \\"Variable\\": \\"$.clusterStatus\\",
+             \\"StringEquals\\": \\"green\\"
+           },
+           \\"Next\\": \\"FailState\\"
+         }
+       ],
+       \\"Default\\": \\"AddNode\\"
+     },
+     \\"FailState\\": {
+       \\"Type\\": \\"Fail\\",
+       \\"Cause\\": \\"Unhealthy Cluster!\\"
+     },
+     \\"AddNode\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${AddNodeArn}\\",
+       \\"Next\\": \\"ClusterSizeCheck\\"
+     },
+     \\"ClusterSizeCheck\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${ClusterSizeCheckArn}\\",
+       \\"Next\\": \\"ReattachTargetInstance\\",
+       \\"Retry\\": [ {
+         \\"ErrorEquals\\": [ \\"States.ALL\\" ],
+         \\"IntervalSeconds\\": 30,
+         \\"MaxAttempts\\": 20,
+         \\"BackoffRate\\": 1.0
+         } ]
+     },
+     \\"ReattachTargetInstance\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${ReattachTargetInstanceArn}\\",
+       \\"Next\\": \\"MigrateShards\\"
+     },
+     \\"MigrateShards\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${MigrateShardsArn}\\",
+       \\"Next\\": \\"ShardMigrationCheck\\"
+     },
+     \\"ShardMigrationCheck\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${ShardMigrationCheckArn}\\",
+       \\"Next\\": \\"RemoveNode\\",
+       \\"Retry\\": [ {
+         \\"ErrorEquals\\": [ \\"States.ALL\\" ],
+         \\"IntervalSeconds\\": 120,
+         \\"MaxAttempts\\": 195,
+         \\"BackoffRate\\": 1.0
+       } ]
+     },
+     \\"RemoveNode\\": {
+       \\"Type\\": \\"Task\\",
+       \\"Resource\\": \\"\${RemoveNodeArn}\\",
+       \\"End\\": true
+     }
+   }
+ }
+",
+            Object {
+              "AddNodeArn": Object {
+                "Fn::GetAtt": "AddNodeLambda.Arn",
+              },
+              "AutoScalingGroupCheckArn": Object {
+                "Fn::GetAtt": "AutoScalingGroupCheckLambda.Arn",
+              },
+              "ClusterSizeCheckArn": Object {
+                "Fn::GetAtt": "ClusterSizeCheckLambda.Arn",
+              },
+              "ClusterStatusCheckArn": Object {
+                "Fn::GetAtt": "ClusterStatusCheckLambda.Arn",
+              },
+              "GetTargetNodeArn": Object {
+                "Fn::GetAtt": "GetTargetNodeLambda.Arn",
+              },
+              "MigrateShardsArn": Object {
+                "Fn::GetAtt": "MigrateShardsLambda.Arn",
+              },
+              "ReattachTargetInstanceArn": Object {
+                "Fn::GetAtt": "ReattachTargetInstanceLambda.Arn",
+              },
+              "RemoveNodeArn": Object {
+                "Fn::GetAtt": "RemoveNodeLambda.Arn",
+              },
+              "ShardMigrationCheckArn": Object {
+                "Fn::GetAtt": "ShardMigrationCheckLambda.Arn",
+              },
+            },
+          ],
+        },
+        "RoleArn": Object {
+          "Fn::GetAtt": "StatesExecutionRole.Arn",
+        },
+        "StateMachineName": Object {
+          "Fn::Sub": "\${Stack}-Elasticsearch-Node-Rotation-\${Stage}",
+        },
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+      },
+      "Type": "AWS::StepFunctions::StateMachine",
+    },
+    "ReattachTargetInstanceLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Reattaches target instance to the ASG",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-reattach-target-instance-\${Stage}",
+        },
+        "Handler": "reattachTargetInstance.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "RemoveNodeLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Removes the target node (typically oldest) from the cluster (and terminates the instance) before re-enabling re-balancing",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-remove-node-\${Stage}",
+        },
+        "Handler": "removeNode.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "ShardMigrationCheckLambda": Object {
+      "DependsOn": Array [
+        "NodeRotationLambdaRole",
+      ],
+      "Properties": Object {
+        "Code": Object {
+          "S3Bucket": Object {
+            "Fn::Sub": "\${DeployS3Bucket}",
+          },
+          "S3Key": Object {
+            "Fn::Sub": "\${DeployS3Key}",
+          },
+        },
+        "Description": "Confirms that all shards have been migrated (and that cluster is green) or exits with an error",
+        "Environment": Object {
+          "Variables": Object {
+            "SSM_BUCKET_NAME": Object {
+              "Fn::GetAtt": "NodeRotationBucketSsmParameter.Value",
+            },
+          },
+        },
+        "FunctionName": Object {
+          "Fn::Sub": "\${Stack}-enr-shard-migration-check-\${Stage}",
+        },
+        "Handler": "shardMigrationCheck.handler",
+        "MemorySize": 512,
+        "Role": Object {
+          "Fn::GetAtt": Array [
+            "NodeRotationLambdaRole",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs16.x",
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "StatesExecutionRole": Object {
+      "Properties": Object {
+        "AssumeRolePolicyDocument": Object {
+          "Statement": Object {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": Object {
+              "Service": Object {
+                "Fn::Sub": "states.\${AWS::Region}.amazonaws.com",
+              },
+            },
+          },
+          "Version": "2012-10-17",
+        },
+        "Path": "/",
+        "Policies": Array [
+          Object {
+            "PolicyDocument": Object {
+              "Statement": Array [
+                Object {
+                  "Action": Array [
+                    "lambda:InvokeFunction",
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*",
+                },
+              ],
+              "Version": "2012-10-17",
+            },
+            "PolicyName": "StatesExecutionPolicy",
+          },
+        ],
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "TriggerExecutionRole": Object {
+      "Properties": Object {
+        "AssumeRolePolicyDocument": Object {
+          "Statement": Object {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": Object {
+              "Service": Array [
+                "events.amazonaws.com",
+              ],
+            },
+          },
+          "Version": "2012-10-17",
+        },
+        "Path": "/",
+        "Policies": Array [
+          Object {
+            "PolicyDocument": Object {
+              "Statement": Array [
+                Object {
+                  "Action": Array [
+                    "states:StartExecution",
+                  ],
+                  "Effect": "Allow",
+                  "Resource": Object {
+                    "Ref": "NodeRotationStepFunction",
+                  },
+                },
+              ],
+              "Version": "2012-10-17",
+            },
+            "PolicyName": "StatesExecutionPolicy",
+          },
+        ],
+        "Tags": Array [
+          Object {
+            "Key": "gu:cdk:version",
+            "Value": "TEST",
+          },
+          Object {
+            "Key": "gu:repo",
+            "Value": "guardian/elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stack",
+            "Value": "elasticsearch-node-rotation",
+          },
+          Object {
+            "Key": "Stage",
+            "Value": "INFRA",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+  },
+}
+`;

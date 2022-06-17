@@ -1,16 +1,12 @@
 import { App } from 'aws-cdk-lib';
-import { MyStack } from './stack';
-
-// Use this file to instantiate your stacks.
+import { ElasticsearchNodeRotation } from './stack';
+import {GuStackProps} from "@guardian/cdk/lib/constructs/core";
 
 const app = new App();
 
-new MyStack(app, 'MyStack-CODE', {
-	stack: 'FIXME',
-	stage: 'CODE',
-});
+export const props: GuStackProps = {
+	stack: "elasticsearch-node-rotation",
+	stage: "INFRA",
+}
 
-new MyStack(app, 'MyStack-PROD', {
-	stack: 'FIXME',
-	stage: 'PROD',
-});
+new ElasticsearchNodeRotation(app, "Elasticsearch-Node-Rotation", props);
