@@ -14,6 +14,7 @@ npm install -g yarn
 
 (
   cd cdk
+  yarn install --frozen-lockfile
   # Set --yes to install projen without a prompt
   npx projen --yes
   npx projen lint
