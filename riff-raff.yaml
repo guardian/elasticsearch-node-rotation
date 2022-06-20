@@ -1,5 +1,7 @@
 regions: [eu-west-1]
 
+allowedStages: [INFRA]
+
 templates:
   cloudformation:
     type: cloud-formation
