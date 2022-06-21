@@ -9,6 +9,15 @@
         }
       ]
     },
+    "dependencies": {
+      "name": "dependencies",
+      "description": "Install dependencies based on lockfile e.g. during CI",
+      "steps": [
+        {
+          "exec": "yarn install --check-files --frozen-lockfile"
+        }
+      ]
+    },
     "diff": {
       "name": "diff",
       "description": "diff CDK stack",

@@ -2,6 +2,7 @@
   "name": "TODO",
   "scripts": {
     "default": "npx projen default",
+    "dependencies": "npx projen dependencies",
     "diff": "npx projen diff",
     "eject": "npx projen eject",
     "lint": "npx projen lint",
@@ -12,7 +13,7 @@
   },
   "devDependencies": {
     "@guardian/cdk": "^45.0.0",
-    "@guardian/cdk-app-ts": "^0.1.8",
+    "@guardian/cdk-app-ts": "0.1.9",
     "@guardian/eslint-config-typescript": "^1.0.1",
     "@guardian/prettier": "^1.0.0",
     "@types/jest": "^27.5.0",

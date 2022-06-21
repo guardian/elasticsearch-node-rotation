@@ -2,6 +2,7 @@
   "dependencies": [
     {
       "name": "@guardian/cdk-app-ts",
+      "version": "0.1.9",
       "type": "build"
     },
     {

@@ -316,10 +316,10 @@
   resolved "https://registry.yarnpkg.com/@gar/promisify/-/promisify-1.1.3.tgz#555193ab2e3bb3b6adc3d551c9c030d9e860daf6"
   integrity sha512-k2Ty1JcVojjJFwrg/ThKi2ujJ7XNLYaFGNB/bWT9wGR+oSMJHMa5w+CUq6p/pVrKeNNgA7pCqEcjSnHVoqJQFw==
 
-"@guardian/cdk-app-ts@^0.1.8":
-  version "0.1.8"
-  resolved "https://registry.yarnpkg.com/@guardian/cdk-app-ts/-/cdk-app-ts-0.1.8.tgz#e2c145f1219220db1ee15859f69bfe3c642659b1"
-  integrity sha512-V04uB5FMyfIiNFI8ReGZZcxDX5NLnRStSaGeHmFG/FDJbXk4ofYgT5Hl0fUw7xSeEWJ4FmaodRrhGZzrdMZmMw==
+"@guardian/cdk-app-ts@0.1.9":
+  version "0.1.9"
+  resolved "https://registry.yarnpkg.com/@guardian/cdk-app-ts/-/cdk-app-ts-0.1.9.tgz#0ee4ead417573cd812ac0b13d4330e9cb0a6fefe"
+  integrity sha512-dJYqgP7BwId6Ye0Ye6Bxv49mx1GhXi+A+4zycYYKJML1T7hLCs8s+4eOXyHbQPF2J4LpudrlfcXvFKLJKtKtyQ==
   dependencies:
     "@guardian/cdk" "45.0.0"
     "@guardian/prettier" "^1.0.0"
