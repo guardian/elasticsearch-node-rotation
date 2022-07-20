@@ -1,0 +1,37 @@
+name: CI
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
+          aws-region: eu-west-1
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      - name: Build and test
+        run: |
+          yarn --frozen-lockfile
+          yarn clean
+          yarn build
+          yarn test
+
+      # TODO replace with guardian/actions-riff-raff once it supports riff-raff.yaml templates
+      - name: Riff-Raff upload
+        run: |
+          LAST_TEAMCITY_BUILD=367
+          export GITHUB_RUN_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))
+      
+          yarn riffRaffUpload
