@@ -29,7 +29,11 @@ deployments:
   deploy-tools-enr-cloudformation:
     stacks: [deploy]
     template: cloudformation
-    app: elk-data-node-rotation
+    parameters:
+      cloudFormationStackName: elasticsearch-node-rotation-INFRA
+      cloudFormationStackByTags: false
+      prependStackToCloudFormationStackName: false
+      appendStageToCloudFormationStackName: false
   deploy-tools-enr-lambda:
     stacks: [deploy]
     dependencies: [deploy-tools-enr-cloudformation]
@@ -40,7 +44,11 @@ deployments:
   ophan-enr-cloudformation:
     stacks: [ophan]
     template: cloudformation
-    app: ophan-es-node-rotation
+    parameters:
+      cloudFormationStackName: ophan-elasticsearch-node-rotation-INFRA
+      cloudFormationStackByTags: false
+      prependStackToCloudFormationStackName: false
+      appendStageToCloudFormationStackName: false
   ophan-enr-lambda:
     stacks: [ophan]
     dependencies: [ophan-enr-cloudformation]
@@ -51,7 +59,11 @@ deployments:
   grid-enr-cloudformation:
     stacks: [media-service]
     template: cloudformation
-    app: grid-es-node-rotation
+    parameters:
+      cloudFormationStackName: elasticsearch-node-rotation-INFRA
+      cloudFormationStackByTags: false
+      prependStackToCloudFormationStackName: false
+      appendStageToCloudFormationStackName: false
   grid-enr-lambda:
     stacks: [media-service]
     dependencies: [grid-enr-cloudformation]
@@ -62,7 +74,11 @@ deployments:
   infosec-enr-cloudformation:
     stacks: [infosec]
     template: cloudformation
-    app: infosec-wazuh-es-rotation
+    parameters:
+      cloudFormationStackName: elasticsearch-node-rotation-INFRA
+      cloudFormationStackByTags: false
+      prependStackToCloudFormationStackName: false
+      appendStageToCloudFormationStackName: false
   infosec-enr-lambda:
     stacks: [infosec]
     dependencies: [infosec-enr-cloudformation]
@@ -73,7 +89,11 @@ deployments:
   content-api-enr-cloudformation:
     stacks: [ content-api]
     template: cloudformation
-    app: elasticsearch-node-rotation
+    parameters:
+      cloudFormationStackName: content-api-elasticsearch-node-rotation-INFRA
+      cloudFormationStackByTags: false
+      prependStackToCloudFormationStackName: false
+      appendStageToCloudFormationStackName: false
   content-api-enr-lambda:
     stacks: [ content-api ]
     dependencies: [ content-api-enr-cloudformation ]
