@@ -27,6 +27,9 @@ jobs:
           yarn clean
           yarn build
           yarn test
+      - name: Bundle AWS SDKv2
+        run: |
+          yarn --frozen-lockfile --production --modules-folder ./target/node_modules
 
       # TODO replace with guardian/actions-riff-raff once it supports riff-raff.yaml templates
       - name: Riff-Raff upload
