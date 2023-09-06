@@ -1,19 +1,26 @@
-import {AutoScaling} from 'aws-sdk';
-import {AutoScalingGroup, DetachInstancesAnswer} from 'aws-sdk/clients/autoscaling';
 import {Instance} from './types';
 import {retry} from '../utils/helperFunctions';
+import {
+    AttachInstancesCommand,
+    AutoScaling, AutoScalingGroup, DescribeAutoScalingGroupsCommand, DescribeAutoScalingGroupsCommandOutput,
+    DetachInstancesCommand,
+    DetachInstancesCommandOutput,
+    TerminateInstanceInAutoScalingGroupCommand,
+    TerminateInstanceInAutoScalingGroupCommandOutput
+} from "@aws-sdk/client-auto-scaling";
 
-const AWS = require('aws-sdk');
-const awsAutoscaling = new AWS.AutoScaling();
+const awsAutoscaling = new AutoScaling();
 
-export function detachInstance(instance: Instance, asgName: string): Promise<DetachInstancesAnswer> {
+export function detachInstance(instance: Instance, asgName: string): Promise<DetachInstancesCommandOutput> {
     console.log(`Detaching ${instance.id} from ${asgName}. This should also bring a new instance into the ASG`);
     const params = {
         InstanceIds: [ instance.id ],
         AutoScalingGroupName: asgName,
         ShouldDecrementDesiredCapacity: false
     };
-    return retry(() => awsAutoscaling.detachInstances(params).promise(), `detaching instance ${instance.id}`, 5)
+    const req = new DetachInstancesCommand(params);
+
+    return retry(() => awsAutoscaling.send(req), `detaching instance ${instance.id}`, 5)
 }
 
 export function attachInstance(instance: Instance, asgName: string): Promise<{}> {
@@ -22,21 +29,24 @@ export function attachInstance(instance: Instance, asgName: string): Promise<{}>
         InstanceIds: [ instance.id ],
         AutoScalingGroupName: asgName
     };
-    return retry(() => awsAutoscaling.attachInstances(params).promise(), `attaching instance ${instance.id}`, 5)
+    const req = new AttachInstancesCommand(params)
+    return retry(() => awsAutoscaling.send(req), `attaching instance ${instance.id}`, 5)
 }
 
-export function terminateInstanceInASG(instance: Instance): Promise<AutoScaling.Types.ActivityType> {
+export function terminateInstanceInASG(instance: Instance): Promise<TerminateInstanceInAutoScalingGroupCommandOutput> {
     console.log(`Terminating instance ${instance.id}`);
     const params = {
         InstanceId: instance.id,
         ShouldDecrementDesiredCapacity: true
     };
-    return retry(() => awsAutoscaling.terminateInstanceInAutoScalingGroup(params).promise(), `terminating instance ${instance.id}`, 5)
+    const req = new TerminateInstanceInAutoScalingGroupCommand(params);
+
+    return retry(() => awsAutoscaling.send(req), `terminating instance ${instance.id}`, 5)
 }
 
-export function describeAsg(asgName: string): Promise<AutoScaling.Types.AutoScalingGroupsType> {
-    const params = { AutoScalingGroupNames: [ asgName ] };
-    return retry(() => awsAutoscaling.describeAutoScalingGroups(params).promise(), `describing ASG ${asgName}`, 5)
+export function describeAsg(asgName: string): Promise<DescribeAutoScalingGroupsCommandOutput> {
+    const req = new DescribeAutoScalingGroupsCommand({ AutoScalingGroupNames: [ asgName ] });
+    return retry(() => awsAutoscaling.send(req), `describing ASG ${asgName}`, 5)
 }
 
 export async function getASG(asgName: string): Promise<AutoScalingGroup> {
@@ -50,10 +60,10 @@ export async function getASG(asgName: string): Promise<AutoScalingGroup> {
 }
 
 export async function getASGsByTag(tagKey: string, tagValue: string): Promise<AutoScalingGroup[]> {
-    return (await retry<AutoScaling.Types.AutoScalingGroupsType>(() => awsAutoscaling.describeAutoScalingGroups({
+    return (await retry<DescribeAutoScalingGroupsCommandOutput>(() => awsAutoscaling.describeAutoScalingGroups({
           Filters: [
               { "Name": `tag${tagValue ? `:${tagKey}` : "-key"}`, Values: [tagValue || tagKey] }
           ]
-      }).promise(), `finding ASGs with tag '${tagKey}' equal to ${tagValue}`, 5)
+      }), `finding ASGs with tag '${tagKey}' equal to ${tagValue}`, 5)
     ).AutoScalingGroups;
 }
