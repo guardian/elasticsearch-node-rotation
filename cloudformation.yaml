@@ -198,6 +198,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-get-target-node-${Stage}
       Description: "Looks up by tag of the autoscaling group the most suitable instance/node to rotate"
       Handler: "getTargetNode.handler"
@@ -206,7 +207,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:
@@ -216,6 +217,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-cluster-status-check-${Stage}
       Description: "Checks the status of an Elasticsearch cluster"
       Handler: "clusterStatusCheck.handler"
@@ -224,7 +226,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:
@@ -234,6 +236,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-auto-scaling-group-check-${Stage}
       Description: "Checks that a single Auto Scaling Group is returned with a maximum limit greater than the desired capacity"
       Handler: "autoScalingGroupCheck.handler"
@@ -242,7 +245,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:
@@ -252,6 +255,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-add-node-${Stage}
       Description: "Disables re-balancing before adding a new node into the Elasticsearch cluster"
       Handler: "addNode.handler"
@@ -260,7 +264,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:
@@ -270,6 +274,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-cluster-size-check-${Stage}
       Description: "Confirms that the Elasticsearch cluster is the expected size"
       Handler: "clusterSizeCheck.handler"
@@ -278,7 +283,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:
@@ -288,6 +293,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-reattach-target-instance-${Stage}
       Description: "Reattaches target instance to the ASG"
       Handler: "reattachTargetInstance.handler"
@@ -296,7 +302,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:
@@ -306,6 +312,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-migrate-shards-${Stage}
       Description: "Migrates shards between two nodes"
       Handler: "migrateShards.handler"
@@ -314,7 +321,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:
@@ -324,6 +331,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-shard-migration-check-${Stage}
       Description: "Confirms that all shards have been migrated (and that cluster is green) or exits with an error"
       Handler: "shardMigrationCheck.handler"
@@ -332,7 +340,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:
@@ -342,6 +350,7 @@ Resources:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
     Properties:
+      Architectures: [ "arm64" ]
       FunctionName: !Sub ${Stack}-enr-remove-node-${Stage}
       Description: "Removes the target node (typically oldest) from the cluster (and terminates the instance) before re-enabling re-balancing"
       Handler: "removeNode.handler"
@@ -350,7 +359,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs16.x
+      Runtime: nodejs18.x
       Timeout: 300
       Environment:
         Variables:

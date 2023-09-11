@@ -1,23 +1,18 @@
-import { ListExecutionsInput, ListExecutionsOutput } from 'aws-sdk/clients/stepfunctions';
+import {ListExecutionsCommand, SFNClient} from "@aws-sdk/client-sfn";
 
-const AWS = require('aws-sdk');
-const awsStepFunctions = new AWS.StepFunctions;
+const awsStepFunctions = new SFNClient();
 
-export function totalRunningExecutions(stepFunctionArn: string): Promise<number> {
-    const params: ListExecutionsInput = {
+export async function totalRunningExecutions(stepFunctionArn: string): Promise<number> {
+    const req = new ListExecutionsCommand({
         stateMachineArn: stepFunctionArn,
         statusFilter: 'RUNNING'
-    };
-    const requestPromise: Promise<ListExecutionsOutput> = awsStepFunctions.listExecutions(params).promise();
-    return new Promise<number>((resolve, reject) => {
-        requestPromise.then(
-            function (data: ListExecutionsOutput) {
-                resolve(data.executions.length);
-            },
-            function (error) {
-                console.log(error, error.stack, error.statusCode);
-                reject(error);
-            }
-        );
-    })
+    });
+
+    try {
+        const response = await awsStepFunctions.send(req);
+        return response.executions.length;
+    } catch(err) {
+        console.log(err, err.stack, err.statusCode);
+        return Promise.reject(err);
+    }
 }
