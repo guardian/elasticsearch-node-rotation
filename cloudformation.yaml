@@ -34,7 +34,10 @@ Parameters:
   SNSTopicForAlerts:
     Type: String
     Description: The name of the SNS topic used for alerting in the case of a failed rotation attempt.
-
+  ClusterSizeCheckAttempts:
+    Type: Number
+    Description: The number of attempts to make when running the cluster size check before failing. See ClusterSizeCheck.IntervalSeconds to calculate the duration this will represent.
+    Default: 20
 
 Conditions:
   ShouldCreateSsmOutputBucket: !Equals
@@ -445,7 +448,7 @@ Resources:
                   "Retry": [ {
                     "ErrorEquals": [ "States.ALL" ],
                     "IntervalSeconds": 30,
-                    "MaxAttempts": 20,
+                    "MaxAttempts": ${ClusterSizeCheckAttempts},
                     "BackoffRate": 1.0
                     } ]
                 },
