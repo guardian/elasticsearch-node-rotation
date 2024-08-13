@@ -23,6 +23,7 @@ jobs:
           cache: 'yarn'
       - name: Build and test
         run: |
+          corepack enable
           yarn --immutable
           yarn clean
           yarn build
