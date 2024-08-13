@@ -23,7 +23,7 @@ jobs:
           cache: 'yarn'
       - name: Build and test
         run: |
-          yarn --frozen-lockfile
+          yarn --immutable
           yarn clean
           yarn build
           yarn test
