@@ -2,7 +2,7 @@
   "name": "elasticsearch-node-rotation",
   "dependencies": {
     "@aws-sdk/client-auto-scaling": "^3.408.0",
-    "@aws-sdk/client-ec2": "^3.408.0",
+    "@aws-sdk/client-ec2": "^3.658.1",
     "@aws-sdk/client-s3": "^3.408.0",
     "@aws-sdk/client-sfn": "^3.408.0",
     "@aws-sdk/client-ssm": "^3.408.0"
