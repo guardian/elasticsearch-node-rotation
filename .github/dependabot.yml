@@ -5,13 +5,13 @@ updates:
     schedule:
       interval: 'monthly'
     commit-message:
-      prefix: "chore(deps): "
-  - package-ecosystem: "npm"
-    directory: "/"
+      prefix: 'chore(deps): '
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "monthly"
+      interval: 'monthly'
     commit-message:
-      prefix: "chore(deps): "
+      prefix: 'chore(deps): '
     groups:
       aws-sdk:
         patterns:
