@@ -59,17 +59,6 @@ deployments:
     parameters:
       bucket: media-service-dist
 
-  infosec-enr-cloudformation:
-    stacks: [infosec]
-    template: cloudformation
-    app: infosec-wazuh-es-rotation
-  infosec-enr-lambda:
-    stacks: [infosec]
-    dependencies: [infosec-enr-cloudformation]
-    template: lambda
-    parameters:
-      bucket: infosec-dist
-
   content-api-enr-cloudformation:
     stacks: [ content-api]
     template: cloudformation
