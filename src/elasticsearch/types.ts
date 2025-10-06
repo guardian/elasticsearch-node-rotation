@@ -12,7 +12,7 @@ export class ElasticsearchNode {
     nodeId: string;
     isMasterEligible: boolean;
 
-    constructor(instance: Instance, nodeId: string, isMasterEligible) {
+    constructor(instance: Instance, nodeId: string, isMasterEligible: boolean) {
         this.ec2Instance = instance;
         this.nodeId = nodeId;
         this.isMasterEligible = isMasterEligible

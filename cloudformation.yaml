@@ -114,6 +114,7 @@ Resources:
                 Action:
                 - autoscaling:DetachInstances
                 - autoscaling:AttachInstances
+                - autoscaling:SetDesiredCapacity
                 - autoscaling:TerminateInstanceInAutoScalingGroup
                 Resource:
                 - !Sub arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/*
