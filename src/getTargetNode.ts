@@ -14,14 +14,14 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
         return { skipRotation: true };
     }
 
-    const eligibleASGs = (
-      await getASGsByTag(event.autoScalingGroupDiscoveryTagKey, "true")
-    ).map(asg => asg.AutoScalingGroupName);
+    const eligibleASGs = await getASGsByTag(event.autoScalingGroupDiscoveryTagKey, "true");
 
     const eligibleInstances = (
       // TODO it would be nice to not need the Tags on the instances as well, but currently used in the ElasticsearchAdminSsmPolicy IAM policy in cloudformation.yaml
       await getInstancesByTag(event.autoScalingGroupDiscoveryTagKey, "true")
-    ).filter(i => eligibleASGs.includes(i.autoScalingGroupName));
+    ).filter(i => eligibleASGs.some(a => a.AutoScalingGroupName === i.autoScalingGroupName));
+
+    const newASG = eligibleASGs.find(a => a.Tags?.some(tag => tag.Key === 'gu:riffraff:new-asg'));
 
     // We can manually run rotation against a particular instance if needed
     if(event.targetInstanceId) {
@@ -38,7 +38,9 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
         const elasticsearchClient = new Elasticsearch(targetInstanceId);
         const targetElasticSearchNode = await elasticsearchClient.getElasticsearchNode(targetInstance);
         console.log(`Instance ${targetInstanceId} (ASG: ${asgName}) specified as input. Moving on...`);
-        return { asgName, targetElasticSearchNode, skipRotation: false };
+
+        const destinationAsgName = newASG?.AutoScalingGroupName ?? asgName;
+        return { destinationAsgName, targetElasticSearchNode, skipRotation: false };
     }
 
     console.log(`Found ${eligibleInstances.length} instances with tag ${event.autoScalingGroupDiscoveryTagKey}`);
@@ -59,7 +61,7 @@ export async function handler(event: StateMachineInput): Promise<AsgDiscoveryRes
     const targetElasticSearchNode = await elasticsearchClient.getElasticsearchNode(oldestInstance);
     console.log(`Triggering rotation of oldest instance ${oldestInstance.id} (ASG: ${oldestInstance.autoScalingGroupName})`);
     return {
-        asgName: oldestInstance.autoScalingGroupName,
+        destinationAsgName: newASG?.AutoScalingGroupName ?? oldestInstance.autoScalingGroupName,
         targetElasticSearchNode,
         skipRotation: false
     }

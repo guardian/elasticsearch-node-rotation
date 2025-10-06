@@ -28,6 +28,18 @@ in this project. The frequency of node rotations is passed into the template as 
 ### Running Manually
 Sometimes it's useful to rotate an ES node manually (e.g. during an ES upgrade), you can optionally pass a `targetInstanceId` in the step function input object. It's usually easiest to open an existing execution and click `New Execution` then just edit the input object. 
 
+### Rotating nodes into a new ASG
+
+Very occasionally, it is required to migrate a cluster into a new Autoscaling Group. To do this with the node rotation step function by:
+
+1. Follow the setup steps above.
+1. Create the new ASG with DesiredCapacity set to 0.
+1. Set the MinimumCapacity of the old ASG to 0.
+1. Tag the new ASG with `gu:riffraff:new-asg = True`.
+1. Run as normal, either manually or letting the schedule rotate the instances.
+
+The step function will detect and launch new instances in the new ASG, while removing nodes from the old ASG.
+
 ## Implementation
 
 This Step Function triggers a number of TypeScript lambdas, which coordinate the process of replacing a node by:
