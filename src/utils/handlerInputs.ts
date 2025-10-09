@@ -8,7 +8,10 @@ export interface StateMachineInput {
 }
 
 export interface AsgInput {
-    asgName: string;
+    // The ASG a node will be rotated _into_. In certain circumstances this may
+    // not be the same as the ASG the node was rotated _out of_, which is stored at
+    // targetElasticSearchNode.ec2Instance.autoScalingGroupName.
+    destinationAsgName: string;
     targetElasticSearchNode: ElasticsearchNode;
 }
 

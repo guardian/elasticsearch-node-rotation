@@ -3,7 +3,7 @@ import {getASG} from "./aws/autoscaling";
 
 export async function handler(event: AsgInput): Promise<AsgInput> {
     try {
-        const asg = await getASG(event.asgName)
+        const asg = await getASG(event.destinationAsgName)
 
         if (asg.MaxSize <= asg.Instances.length) {
             const error = `ASG MaxSize must be greater than Desired Capacity to allow for ReattachTargetInstance step.`

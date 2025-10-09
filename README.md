@@ -28,6 +28,25 @@ in this project. The frequency of node rotations is passed into the template as 
 ### Running Manually
 Sometimes it's useful to rotate an ES node manually (e.g. during an ES upgrade), you can optionally pass a `targetInstanceId` in the step function input object. It's usually easiest to open an existing execution and click `New Execution` then just edit the input object. 
 
+### Rotating nodes into a new ASG
+
+Very occasionally, it is required to migrate a cluster into a new Autoscaling Group. To do this with the node rotation step function by:
+
+1. Follow the setup steps above.
+1. Create the new ASG with DesiredCapacity set to 0.
+1. Set the MinimumCapacity of the old ASG to 0.
+1. Tag the new ASG with `gu:riffraff:new-asg = True`. (This is the tag that is already used by riff-raff for identifying the newer ASG during migrations).
+1. Run as normal, either manually or letting the schedule rotate the instances.
+
+The step function will detect and launch new instances in the new ASG, while removing nodes from the old ASG.
+
+> [!WARNING]
+> This feature has been developed and tested for Elasticsearch clusters which exist in a single ASG, and the "new" ASG can be
+> matched to the "old" one using Stage/Stack/App tags. If your usecase doesn't match this, you'll likely need to do some more testing
+> and possibly improve this feature. If you're at all unsure, get in touch in the Elasticsearch chat space and we can figure out
+> any potential issues together.
+
+
 ## Implementation
 
 This Step Function triggers a number of TypeScript lambdas, which coordinate the process of replacing a node by:
