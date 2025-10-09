@@ -35,10 +35,17 @@ Very occasionally, it is required to migrate a cluster into a new Autoscaling Gr
 1. Follow the setup steps above.
 1. Create the new ASG with DesiredCapacity set to 0.
 1. Set the MinimumCapacity of the old ASG to 0.
-1. Tag the new ASG with `gu:riffraff:new-asg = True`.
+1. Tag the new ASG with `gu:riffraff:new-asg = True`. (This is the tag that is already used by riff-raff for identifying the newer ASG during migrations).
 1. Run as normal, either manually or letting the schedule rotate the instances.
 
 The step function will detect and launch new instances in the new ASG, while removing nodes from the old ASG.
+
+> [!WARNING]
+> This feature has been developed and tested for Elasticsearch clusters which exist in a single ASG, and the "new" ASG can be
+> matched to the "old" one using Stage/Stack/App tags. If your usecase doesn't match this, you'll likely need to do some more testing
+> and possibly improve this feature. If you're at all unsure, get in touch in the Elasticsearch chat space and we can figure out
+> any potential issues together.
+
 
 ## Implementation
 
