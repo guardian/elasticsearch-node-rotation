@@ -7,7 +7,11 @@ import {Instance} from "./aws/types";
 import { type AutoScalingGroup } from '@aws-sdk/client-auto-scaling';
 
 function asgTagsToRecord(asg: AutoScalingGroup): Record<string, string> {
-  return Object.fromEntries(asg.Tags.map(tag => ([tag.Key, tag.Value])));
+  return Object.fromEntries(
+    (asg.Tags ?? [])
+      .filter(tag => tag.Key !== undefined && tag.Value !== undefined)
+      .map(tag => [tag.Key!, tag.Value!])
+  );
 }
 
 /** attempt to find an ASG with the same tagging as the target instance's,

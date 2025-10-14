@@ -32,7 +32,13 @@ export async function launchNewInstance(instance: Instance, asgName: string): Pr
             `getting current capacity in ${asgName}`,
             5,
         );
+        if (!asgs.AutoScalingGroups || asgs.AutoScalingGroups.length === 0) {
+            throw new Error(`No AutoScalingGroup found with name ${asgName}`);
+        }
         const capacity = asgs.AutoScalingGroups[0].DesiredCapacity;
+        if (typeof capacity !== 'number' || isNaN(capacity)) {
+            throw new Error(`DesiredCapacity is not defined or not a number for ASG ${asgName}`);
+        }
 
         return retry(
             () => awsAutoscaling.send(new SetDesiredCapacityCommand({
