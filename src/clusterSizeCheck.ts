@@ -7,7 +7,7 @@ import {getASG} from "./aws/autoscaling";
 
 export async function handler(event: AddNodeResponse): Promise<TargetAndNewNodeResponse> {
 
-    const asg = await getASG(event.asgName)
+    const asg = await getASG(event.destinationAsgName)
     const instanceIds = asg.Instances.map(i  => i.InstanceId)
     const newestInstance = await getSpecificInstance(instanceIds, findNewestInstance)
     const elasticsearchClient = new Elasticsearch(event.targetElasticSearchNode.ec2Instance.id)
@@ -27,7 +27,7 @@ export async function handler(event: AddNodeResponse): Promise<TargetAndNewNodeR
             })
             .then( (newestElasticsearchNode: ElasticsearchNode) => {
                 const response: TargetAndNewNodeResponse = {
-                    "asgName": event.asgName,
+                    "destinationAsgName": event.destinationAsgName,
                     "targetElasticSearchNode": event.targetElasticSearchNode,
                     "newestElasticsearchNode": newestElasticsearchNode
                 };

@@ -5,22 +5,50 @@ import {
     AutoScaling, AutoScalingGroup, DescribeAutoScalingGroupsCommand, DescribeAutoScalingGroupsCommandOutput,
     DetachInstancesCommand,
     DetachInstancesCommandOutput,
+    SetDesiredCapacityCommand,
     TerminateInstanceInAutoScalingGroupCommand,
     TerminateInstanceInAutoScalingGroupCommandOutput
 } from "@aws-sdk/client-auto-scaling";
 
 const awsAutoscaling = new AutoScaling();
 
-export function detachInstance(instance: Instance, asgName: string): Promise<DetachInstancesCommandOutput> {
-    console.log(`Detaching ${instance.id} from ${asgName}. This should also bring a new instance into the ASG`);
-    const params = {
-        InstanceIds: [ instance.id ],
-        AutoScalingGroupName: asgName,
-        ShouldDecrementDesiredCapacity: false
-    };
-    const req = new DetachInstancesCommand(params);
+export async function launchNewInstance(instance: Instance, asgName: string): Promise<DetachInstancesCommandOutput> {
+    if (instance.autoScalingGroupName === asgName) {
+        console.log(`Detaching ${instance.id} from ${asgName}. This should also bring a new instance into the ASG`);
+        const params = {
+            InstanceIds: [ instance.id ],
+            AutoScalingGroupName: asgName,
+            ShouldDecrementDesiredCapacity: false
+        };
+        const req = new DetachInstancesCommand(params);
 
-    return retry(() => awsAutoscaling.send(req), `detaching instance ${instance.id}`, 5)
+        return retry(() => awsAutoscaling.send(req), `detaching instance ${instance.id}`, 5)
+    } else {
+        console.log(`Launch new instance to new ASG ${asgName}.`);
+        const asgs = await retry(
+            () => awsAutoscaling.send(new DescribeAutoScalingGroupsCommand({
+                AutoScalingGroupNames: [asgName]
+            })),
+            `getting current capacity in ${asgName}`,
+            5,
+        );
+        if (!asgs.AutoScalingGroups || asgs.AutoScalingGroups.length === 0) {
+            throw new Error(`No AutoScalingGroup found with name ${asgName}`);
+        }
+        const capacity = asgs.AutoScalingGroups[0].DesiredCapacity;
+        if (typeof capacity !== 'number' || isNaN(capacity)) {
+            throw new Error(`DesiredCapacity is not defined or not a number for ASG ${asgName}`);
+        }
+
+        return retry(
+            () => awsAutoscaling.send(new SetDesiredCapacityCommand({
+                AutoScalingGroupName: asgName,
+                DesiredCapacity: capacity + 1,
+            })),
+            `launching new instance in ${asgName}`,
+            5,
+        );
+    }
 }
 
 export function attachInstance(instance: Instance, asgName: string): Promise<{}> {

@@ -37,7 +37,9 @@ export class Elasticsearch {
         return this.execute(`/_nodes/${instance.privateIp}`).then((json: any) => {
             if (json._nodes.total === 1) {
                 const nodeId: string = Object.keys(json.nodes)[0];
-                const isMasterEligible: boolean = json.nodes[nodeId].settings.node.master == 'true';
+                const isMasterEligible: boolean = json.nodes[nodeId].settings.node.master == 'true'
+                  || json.nodes[nodeId].settings.node.roles?.includes('master')
+                  || false;
                 return new ElasticsearchNode(instance, nodeId, isMasterEligible);
             } else {
                 throw `expected information about a single node, but got: ${JSON.stringify(json)}`;
