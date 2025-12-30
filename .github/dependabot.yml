@@ -16,3 +16,8 @@ updates:
       aws-sdk:
         patterns:
           - '@aws-sdk/*'
+    ignore:
+      - dependency-name: '@types/node'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'      
