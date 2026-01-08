@@ -64,7 +64,7 @@ describe('removeNode handler', () => {
         expect(excludeCallOrder).toEqual(['i-newest', 'i-target', 'i-fallback']);
     });
 
-    it('continues rotation even if allocation exclusion cannot be cleared', async () => {
+    it('fails rotation if allocation exclusion cannot be cleared', async () => {
         const event = buildEvent();
         const excludeCallOrder: string[] = [];
 
@@ -85,7 +85,7 @@ describe('removeNode handler', () => {
             } as any;
         });
 
-        await expect(handler(event)).resolves.toEqual(event);
+        await expect(handler(event)).rejects.toThrow('Failed to clear allocation exclusion via any instance');
         expect(mockedTerminateInstanceInASG).toHaveBeenCalledWith(event.targetElasticSearchNode.ec2Instance);
         expect(excludeCallOrder).toEqual(['i-newest', 'i-target', 'i-fallback']);
     });

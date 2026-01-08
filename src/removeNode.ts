@@ -59,5 +59,5 @@ async function clearAllocationExclusion(instanceIds: string[]): Promise<void> {
         }
     }
 
-    console.log('Failed to clear allocation exclusion via any instance; continuing');
+    throw new Error('Failed to clear allocation exclusion via any instance');
 }
