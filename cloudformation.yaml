@@ -216,6 +216,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   ClusterStatusCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -235,6 +238,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   AutoScalingGroupCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -254,6 +260,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   AddNodeLambda:
     Type: "AWS::Lambda::Function"
@@ -273,6 +282,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   ClusterSizeCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -292,6 +304,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   ReattachTargetInstanceLambda:
     Type: "AWS::Lambda::Function"
@@ -311,6 +326,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   MigrateShardsLambda:
     Type: "AWS::Lambda::Function"
@@ -330,6 +348,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   ShardMigrationCheckLambda:
     Type: "AWS::Lambda::Function"
@@ -349,6 +370,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   RemoveNodeLambda:
     Type: "AWS::Lambda::Function"
@@ -368,6 +392,9 @@ Resources:
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
 
   NodeRotationStepFunction:
     Type: "AWS::StepFunctions::StateMachine"
