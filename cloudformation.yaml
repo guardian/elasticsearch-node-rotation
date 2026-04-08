@@ -211,7 +211,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
@@ -233,7 +233,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
@@ -255,7 +255,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
@@ -277,7 +277,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
@@ -299,7 +299,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
@@ -321,7 +321,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
@@ -343,7 +343,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
@@ -365,7 +365,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
@@ -387,7 +387,7 @@ Resources:
         S3Bucket: !Sub ${DeployS3Bucket}
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Timeout: 300
       Environment:
         Variables:
