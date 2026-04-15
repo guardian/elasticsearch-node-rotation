@@ -11,13 +11,13 @@ export async function handler(event: AddNodeResponse): Promise<TargetAndNewNodeR
     const instanceIds = asg.Instances.map(i  => i.InstanceId)
     const newestInstance = await getSpecificInstance(instanceIds, findNewestInstance)
     const elasticsearchClient = new Elasticsearch(event.targetElasticSearchNode.ec2Instance.id)
-    const newestNode = elasticsearchClient.getElasticsearchNode(newestInstance)
 
     return new Promise<TargetAndNewNodeResponse>((resolve, reject) => {
         elasticsearchClient.getClusterHealth()
             .then((clusterStatus: ElasticsearchClusterStatus) => {
                 const nodesInCluster = clusterStatus.number_of_nodes;
                 if (nodesInCluster === event.expectedClusterSize) {
+                    const newestNode = elasticsearchClient.getElasticsearchNode(newestInstance);
                     return newestNode;
                 } else {
                     const error = `Found ${nodesInCluster} nodes but expected to find ${event.expectedClusterSize}`;
