@@ -114,6 +114,7 @@ Resources:
                 Action:
                 - autoscaling:DetachInstances
                 - autoscaling:AttachInstances
+                - autoscaling:EnterStandby
                 - autoscaling:SetDesiredCapacity
                 - autoscaling:TerminateInstanceInAutoScalingGroup
                 Resource:

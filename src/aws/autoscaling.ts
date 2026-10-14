@@ -5,6 +5,7 @@ import {
     AutoScaling, AutoScalingGroup, DescribeAutoScalingGroupsCommand, DescribeAutoScalingGroupsCommandOutput,
     DetachInstancesCommand,
     DetachInstancesCommandOutput,
+    EnterStandbyCommand,
     SetDesiredCapacityCommand,
     TerminateInstanceInAutoScalingGroupCommand,
     TerminateInstanceInAutoScalingGroupCommandOutput
@@ -61,11 +62,32 @@ export function attachInstance(instance: Instance, asgName: string): Promise<{}>
     return retry(() => awsAutoscaling.send(req), `attaching instance ${instance.id}`, 5)
 }
 
+export async function enterStandby(instance: Instance): Promise<void> {
+    console.log(`Entering standby for instance ${instance.id} in ${instance.autoScalingGroupName}`);
+    const params = {
+        InstanceIds: [ instance.id ],
+        AutoScalingGroupName: instance.autoScalingGroupName,
+        ShouldDecrementDesiredCapacity: true
+    };
+    const req = new EnterStandbyCommand(params);
+
+    await retry(() => awsAutoscaling.send(req), `entering standby for instance ${instance.id}`, 5);
+
+    await retry(async () => {
+        const asg = await getASG(instance.autoScalingGroupName);
+        const asgInstance = asg.Instances?.find(i => i.InstanceId === instance.id);
+        const state = asgInstance?.LifecycleState;
+        if (state !== 'Standby') {
+            throw new Error(`Instance ${instance.id} is in state ${state}, waiting for Standby`);
+        }
+    }, `waiting for instance ${instance.id} to reach Standby`, 10);
+}
+
 export function terminateInstanceInASG(instance: Instance): Promise<TerminateInstanceInAutoScalingGroupCommandOutput> {
     console.log(`Terminating instance ${instance.id}`);
     const params = {
         InstanceId: instance.id,
-        ShouldDecrementDesiredCapacity: true
+        ShouldDecrementDesiredCapacity: false
     };
     const req = new TerminateInstanceInAutoScalingGroupCommand(params);
 
