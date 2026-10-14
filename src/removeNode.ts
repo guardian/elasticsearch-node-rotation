@@ -1,12 +1,14 @@
 import {TargetAndNewNodeResponse} from './utils/handlerInputs';
 import {ssmCommand} from './utils/ssmCommand';
-import {getASG, terminateInstanceInASG} from "./aws/autoscaling";
+import {enterStandby, getASG, terminateInstanceInASG} from "./aws/autoscaling";
 import {Instance} from './aws/types';
 import {Elasticsearch} from './elasticsearch/elasticsearch';
 
 export async function handler(event: TargetAndNewNodeResponse): Promise<TargetAndNewNodeResponse> {
 
     const targetInstance: Instance = event.targetElasticSearchNode.ec2Instance;
+    await enterStandby(targetInstance);
+
     if (event.targetElasticSearchNode.isMasterEligible) try {
         console.log(`attempting to smoothly shutdown master-eligible node: ${targetInstance.id}`);
         await ssmCommand("systemctl stop elasticsearch", targetInstance.id, false);
