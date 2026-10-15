@@ -11,16 +11,15 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      # Required to comment on a pull request
+      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
-        with:
-          role-to-assume: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
-          aws-region: eu-west-1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: '.nvmrc'
           cache: 'yarn'
+
       - name: Build and test
         run: |
           corepack enable
@@ -28,11 +27,21 @@ jobs:
           yarn clean
           yarn build
           yarn test
+          pushd target
+          zip -qr ../elasticsearch-node-rotation.zip ./
+          popd
 
-      # TODO replace with guardian/actions-riff-raff once it supports riff-raff.yaml templates
       - name: Riff-Raff upload
-        run: |
-          LAST_TEAMCITY_BUILD=367
-          export GITHUB_RUN_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))
-      
-          yarn riffRaffUpload
+        uses: guardian/actions-riff-raff@9b7f9fe778957e6dc3ef4ab70fec015119ccba83 # v.4.3.7
+        with:
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          roleArn: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
+          projectName: elasticsearch-node-rotation
+          configPath: ./riff-raff.yaml
+          buildNumberOffset: 367
+          commentingStage: INFRA
+          contentDirectories: |
+            elasticsearch-node-rotation:
+              - elasticsearch-node-rotation.zip
+            elasticsearch-node-rotation-cloudformation:
+              - cloudformation.yaml
