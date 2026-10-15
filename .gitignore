@@ -3,3 +3,4 @@ target
 node_modules
 .idea/
 .vscode/
+elasticsearch-node-rotation.zip
