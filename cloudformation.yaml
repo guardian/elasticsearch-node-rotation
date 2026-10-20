@@ -389,7 +389,7 @@ Resources:
         S3Key: !Sub ${DeployS3Key}
       MemorySize: 512
       Runtime: nodejs24.x
-      Timeout: 300
+      Timeout: 900
       Environment:
         Variables:
           SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
