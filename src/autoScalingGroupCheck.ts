@@ -6,6 +6,11 @@ import { InstanceHealthStatus } from '@aws-sdk/client-ec2';
 export async function handler(event: AsgInput): Promise<AsgInput> {
     try {
         const asg = await getASG(event.destinationAsgName)
+        console.log('Auto Scaling instance statuses:', asg.Instances.map(i => ({
+            instanceId: i.InstanceId,
+            healthStatus: i.HealthStatus,
+            lifecycleState: i.LifecycleState,
+        })));
 
         if (asg.MaxSize <= asg.Instances.length) {
             const error = `ASG MaxSize must be greater than Desired Capacity to allow for ReattachTargetInstance step.`
