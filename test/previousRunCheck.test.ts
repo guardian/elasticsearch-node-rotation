@@ -16,6 +16,7 @@ describe('previousRunCheck handler', () => {
         stepFunctionArn: 'arn:aws:states:us-east-1:123456789:stateMachine:test',
         autoScalingGroupDiscoveryTagKey: 'es-rotation',
         ageThresholdInDays: 7,
+        skipFailureCheck: false,
     };
 
     it('allows rotation when only the current execution is running', async () => {

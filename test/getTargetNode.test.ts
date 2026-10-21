@@ -26,6 +26,7 @@ describe('getTargetNode handler', () => {
             stepFunctionArn: 'arn:aws:states:us-east-1:123456789:stateMachine:test',
             autoScalingGroupDiscoveryTagKey: 'es-rotation',
             ageThresholdInDays: 7,
+            skipFailureCheck: false,
         };
 
         const result = await handler(event);
@@ -59,6 +60,7 @@ describe('getTargetNode handler', () => {
             stepFunctionArn: 'arn:aws:states:us-east-1:123456789:stateMachine:test',
             autoScalingGroupDiscoveryTagKey: 'es-rotation',
             ageThresholdInDays: 7,
+            skipFailureCheck: false,
         };
 
         const result = await handler(event);
@@ -97,6 +99,7 @@ describe('getTargetNode handler', () => {
             stepFunctionArn: 'arn:aws:states:us-east-1:123456789:stateMachine:test',
             autoScalingGroupDiscoveryTagKey: 'es-rotation',
             ageThresholdInDays: 7,
+            skipFailureCheck: false,
         };
 
         const result = await handler(event);
@@ -146,6 +149,7 @@ describe('getTargetNode handler', () => {
             autoScalingGroupDiscoveryTagKey: 'es-rotation',
             ageThresholdInDays: 7,
             targetInstanceId: 'i-123', // an old instance, but not the oldest
+            skipFailureCheck: false,
         };
 
         const result = await handler(event);
@@ -195,6 +199,7 @@ describe('getTargetNode handler', () => {
             stepFunctionArn: 'arn:aws:states:us-east-1:123456789:stateMachine:test',
             autoScalingGroupDiscoveryTagKey: 'es-rotation',
             ageThresholdInDays: 7,
+            skipFailureCheck: false,
         };
 
         const result = await handler(event);
@@ -244,6 +249,7 @@ describe('getTargetNode handler', () => {
             stepFunctionArn: 'arn:aws:states:us-east-1:123456789:stateMachine:test',
             autoScalingGroupDiscoveryTagKey: 'es-rotation',
             ageThresholdInDays: 7,
+            skipFailureCheck: false,
         };
 
         const result = await handler(event);
@@ -294,6 +300,7 @@ describe('getTargetNode handler', () => {
             autoScalingGroupDiscoveryTagKey: 'es-rotation',
             ageThresholdInDays: 7,
             targetInstanceId: 'i-123',
+            skipFailureCheck: false,
         };
 
         const result = await handler(event);
@@ -344,6 +351,7 @@ describe('getTargetNode handler', () => {
             autoScalingGroupDiscoveryTagKey: 'es-rotation',
             ageThresholdInDays: 7,
             targetInstanceId: 'i-123',
+            skipFailureCheck: false,
         };
 
         const result = await handler(event);
