@@ -5,7 +5,7 @@ export interface StateMachineInput {
     ageThresholdInDays: number;
     stepFunctionArn: string;
     targetInstanceId?: string;
-    skipFailureCheck?: boolean;
+    skipFailureCheck: boolean;
 }
 
 export type PreviousRunCheckInput = StateMachineInput;

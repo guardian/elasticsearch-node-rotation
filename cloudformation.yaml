@@ -577,7 +577,8 @@ Resources:
               "autoScalingGroupDiscoveryTagKey": "RotateWithElasticsearchNodeRotation",
               "ageThresholdInDays": ${AgeThresholdInDays},
               "stepFunctionArn": "${StepFunctionArn}",
-              "targetInstanceId": null
+              "targetInstanceId": null,
+              "skipFailureCheck": false
             }
           -
            StepFunctionArn: !Ref NodeRotationStepFunction
