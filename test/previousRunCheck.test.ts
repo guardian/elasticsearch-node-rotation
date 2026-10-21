@@ -50,4 +50,14 @@ describe('previousRunCheck handler', () => {
 
         await expect(handler(event)).rejects.toBe(error);
     });
+
+    it('allows rotation even when previous execution failed if skipFailureCheck is true', async () => {
+        const skipAllowedEvent = { ...event, skipFailureCheck: true };
+        mockedTotalRunningExecutions.mockResolvedValue(1);
+        mockedPreviousExecutionFailed.mockResolvedValue(true);
+
+        await expect(handler(skipAllowedEvent)).resolves.toEqual({ ...skipAllowedEvent, skipRotation: false });
+        expect(mockedTotalRunningExecutions).toHaveBeenCalledWith(event.stepFunctionArn);
+        expect(mockedPreviousExecutionFailed).not.toHaveBeenCalled();
+    });
 });
