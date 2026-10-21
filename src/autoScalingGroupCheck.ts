@@ -1,5 +1,7 @@
 import { AsgInput } from './utils/handlerInputs';
 import {getASG} from "./aws/autoscaling";
+import { LifecycleState } from '@aws-sdk/client-auto-scaling';
+import { InstanceHealthStatus } from '@aws-sdk/client-ec2';
 
 export async function handler(event: AsgInput): Promise<AsgInput> {
     try {
@@ -9,8 +11,10 @@ export async function handler(event: AsgInput): Promise<AsgInput> {
             const error = `ASG MaxSize must be greater than Desired Capacity to allow for ReattachTargetInstance step.`
             throw new Error(error)
         }
-
-        const unhealthyInstanceCount = asg.Instances.filter(i => i.HealthStatus !== 'Healthy').length
+        const unhealthyInstanceCount = asg.Instances.filter(
+		i => i.HealthStatus !== InstanceHealthStatus.HEALTHY_STATUS ||
+		i.LifecycleState !== LifecycleState.IN_SERVICE
+	).length
 
         if (unhealthyInstanceCount > 0) {
             const error = `ASG has ${unhealthyInstanceCount} unhealthy instances`;
@@ -22,4 +26,4 @@ export async function handler(event: AsgInput): Promise<AsgInput> {
         console.log(`Failing Step Function execution; ${error}`)
         throw error
     }
-}
+}			

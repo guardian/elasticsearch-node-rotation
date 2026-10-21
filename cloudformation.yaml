@@ -265,6 +265,28 @@ Resources:
         - Key: Owner
           Value: DevX
 
+  PreviousRunCheckLambda:
+    Type: "AWS::Lambda::Function"
+    DependsOn: NodeRotationLambdaRole
+    Properties:
+      Architectures: [ "arm64" ]
+      FunctionName: !Sub ${Stack}-enr-previous-run-check-${Stage}
+      Description: "Skips rotation if another execution is running and fails when the previous execution failed"
+      Handler: "previousRunCheck.handler"
+      Role: !GetAtt [ NodeRotationLambdaRole, Arn ]
+      Code:
+        S3Bucket: !Sub ${DeployS3Bucket}
+        S3Key: !Sub ${DeployS3Key}
+      MemorySize: 512
+      Runtime: nodejs24.x
+      Timeout: 300
+      Environment:
+        Variables:
+          SSM_BUCKET_NAME: !GetAtt NodeRotationBucketSsmParameter.Value
+      Tags:
+        - Key: Owner
+          Value: DevX
+
   AddNodeLambda:
     Type: "AWS::Lambda::Function"
     DependsOn: NodeRotationLambdaRole
@@ -401,6 +423,7 @@ Resources:
     Type: "AWS::StepFunctions::StateMachine"
     DependsOn:
     - GetTargetNodeLambda
+    - PreviousRunCheckLambda
     - AutoScalingGroupCheckLambda
     - ClusterStatusCheckLambda
     - AddNodeLambda
@@ -417,8 +440,24 @@ Resources:
           - |
            {
              "Comment": "Elasticsearch Node Rotation",
-             "StartAt": "GetTargetNode",
+             "StartAt": "PreviousRunCheck",
              "States": {
+                "PreviousRunCheck": {
+                  "Type": "Task",
+                  "Resource": "${PreviousRunCheckArn}",
+                  "Next": "CheckPreviousRun"
+                },
+                "CheckPreviousRun": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Variable": "$.skipRotation",
+                      "BooleanEquals": false,
+                      "Next": "GetTargetNode"
+                    }
+                  ],
+                  "Default": "StopAsSkippingRotation"
+                },
                 "GetTargetNode": {
                   "Type": "Task",
                   "Resource": "${GetTargetNodeArn}",
@@ -510,6 +549,7 @@ Resources:
               }
             }
           -
+            PreviousRunCheckArn: !GetAtt PreviousRunCheckLambda.Arn
             AutoScalingGroupCheckArn: !GetAtt AutoScalingGroupCheckLambda.Arn
             ClusterStatusCheckArn: !GetAtt ClusterStatusCheckLambda.Arn
             AddNodeArn: !GetAtt AddNodeLambda.Arn

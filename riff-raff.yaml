@@ -16,6 +16,7 @@ templates:
       fileName: elasticsearch-node-rotation.zip
       functionNames:
       - -enr-get-target-node-
+      - -enr-previous-run-check-
       - -enr-auto-scaling-group-check-
       - -enr-cluster-status-check-
       - -enr-add-node-

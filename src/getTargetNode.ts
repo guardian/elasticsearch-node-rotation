@@ -1,5 +1,4 @@
 import {AsgDiscoveryResponse, StateMachineInput} from './utils/handlerInputs';
-import {totalRunningExecutions} from "./aws/stepFunctions";
 import {getInstancesByTag} from './aws/ec2Instances';
 import {getASGsByTag} from "./aws/autoscaling";
 import {Elasticsearch} from "./elasticsearch/elasticsearch";
@@ -48,14 +47,6 @@ function findNewAsgMatchingInstanceAsg(
 }
 
 export async function handler(event: StateMachineInput): Promise<AsgDiscoveryResponse> {
-    const runningExecutionsPromise = totalRunningExecutions(event.stepFunctionArn)
-    const runningExecutions = await runningExecutionsPromise
-
-    if (runningExecutions !== 1) {
-        console.log(`Expected to find one running execution (this one!) but there were ${runningExecutions}.`);
-        return { skipRotation: true };
-    }
-
     const eligibleASGs = await getASGsByTag(event.autoScalingGroupDiscoveryTagKey, "true");
 
     const eligibleInstances = (

@@ -1,10 +1,16 @@
-import {ElasticsearchNode} from '../elasticsearch/types'
+import type { ElasticsearchNode } from '../elasticsearch/types';
 
 export interface StateMachineInput {
     autoScalingGroupDiscoveryTagKey: string;
     ageThresholdInDays: number;
     stepFunctionArn: string;
     targetInstanceId?: string
+}
+
+export type PreviousRunCheckInput = StateMachineInput;
+
+export interface PreviousRunCheckResponse extends StateMachineInput {
+    skipRotation: boolean;
 }
 
 export interface AsgInput {
