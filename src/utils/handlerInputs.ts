@@ -4,7 +4,8 @@ export interface StateMachineInput {
     autoScalingGroupDiscoveryTagKey: string;
     ageThresholdInDays: number;
     stepFunctionArn: string;
-    targetInstanceId?: string
+    targetInstanceId?: string;
+    skipFailureCheck?: boolean;
 }
 
 export type PreviousRunCheckInput = StateMachineInput;

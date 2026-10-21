@@ -9,10 +9,10 @@ export async function handler(event: PreviousRunCheckInput): Promise<PreviousRun
         return { ...event, skipRotation: true };
     }
 
-    const failedExecution = await previousExecutionFailed(event.stepFunctionArn);
+    const failedExecution = !event.skipFailureCheck && await previousExecutionFailed(event.stepFunctionArn);
 
     if (failedExecution) {
-        throw new Error('Previous execution failed; refusing to continue rotation.');
+        throw new Error('Previous execution failed; refusing to continue rotation. Run with `skipFailureCheck: true` after investigating.');
     }
 
     return { ...event, skipRotation: false };
