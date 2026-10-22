@@ -80,7 +80,7 @@ export async function enterStandby(instance: Instance): Promise<void> {
         if (state !== 'Standby') {
             throw new Error(`Instance ${instance.id} is in state ${state}, waiting for Standby`);
         }
-    }, `waiting for instance ${instance.id} to reach Standby`, 10);
+    }, `waiting for instance ${instance.id} to reach Standby`, 30);
 }
 
 export function terminateInstanceInASG(instance: Instance): Promise<TerminateInstanceInAutoScalingGroupCommandOutput> {

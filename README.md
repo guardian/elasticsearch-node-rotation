@@ -28,6 +28,10 @@ in this project. The frequency of node rotations is passed into the template as 
 ### Running Manually
 Sometimes it's useful to rotate an ES node manually (e.g. during an ES upgrade), you can optionally pass a `targetInstanceId` in the step function input object. It's usually easiest to open an existing execution and click `New Execution` then just edit the input object. 
 
+### Recovering from failures
+
+By default, the step function will refuse to run if the previous run failed (including if the previous run failed due to a prior failure). Once the problem has been diagnosed and resolved, rerun the execution by pressing `New Execution` and editing the input object to set `"skipFailureCheck": true`.
+
 ### Rotating nodes into a new ASG
 
 Very occasionally, it is required to migrate a cluster into a new Autoscaling Group. To do this with the node rotation step function by:
