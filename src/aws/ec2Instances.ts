@@ -1,11 +1,11 @@
-import {Instance} from './types';
+import { Instance } from './types';
 
 import {
     DescribeInstancesCommandOutput,
     Instance as EC2Instance,
     EC2,
     DescribeInstancesCommand
-} from "@aws-sdk/client-ec2";
+} from '@aws-sdk/client-ec2';
 const awsEc2 = new EC2();
 
 type InstanceFilter = (instances: Instance[]) => Instance;
@@ -22,6 +22,22 @@ function buildInstance(instance: EC2Instance): Instance {
 function buildInstances(data: DescribeInstancesCommandOutput): Instance[] {
     const instanceArrays = data.Reservations.map(arrays => arrays.Instances);
     return instanceArrays.concat.apply([], instanceArrays).map(buildInstance);
+}
+
+// Detached instances need not have the ASG tag required by discovery's buildInstance.
+export async function getInstanceState(instanceId: string): Promise<string> {
+    const response = await awsEc2.send(new DescribeInstancesCommand({ InstanceIds: [instanceId] }));
+    const instances = (response.Reservations ?? []).flatMap(reservation => reservation.Instances ?? []);
+    if (
+        instances.length !== 1 ||
+        instances[0].InstanceId !== instanceId ||
+        !instances[0].State?.Name
+    ) {
+        throw new Error(
+            `Cannot determine EC2 state for ${instanceId}; missing data does not imply termination`
+        );
+    }
+    return instances[0].State.Name;
 }
 
 export async function getSpecificInstance(instanceIds: string[], instanceFilter: InstanceFilter): Promise<Instance> {

@@ -108,6 +108,7 @@ Resources:
               - Effect: Allow
                 Action:
                 - autoscaling:DescribeAutoScalingGroups
+                - autoscaling:DescribeAutoScalingInstances
                 - ec2:DescribeInstances
                 Resource: "*"
               - Effect: Allow

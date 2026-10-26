@@ -1,26 +1,22 @@
-import {attachInstance} from './aws/autoscaling';
-import {TargetAndNewNodeResponse} from './utils/handlerInputs';
-import {Instance} from './aws/types';
+import { attachInstance } from './aws/autoscaling';
+import { TargetAndNewNodeResponse, requireRotationPlan } from './utils/handlerInputs';
 
 export async function handler(event: TargetAndNewNodeResponse): Promise<TargetAndNewNodeResponse> {
+    const rotationPlan = requireRotationPlan(event);
+    const target = event.targetElasticSearchNode.ec2Instance;
 
-    const targetInstance: Instance = event.targetElasticSearchNode.ec2Instance;
-    const asg: string = event.destinationAsgName;
-
-    if (targetInstance.autoScalingGroupName !== asg) {
-        console.log(`New instance launched in different ASG than target instance, so nothing to reattach`);
+    if (target.autoScalingGroupName !== event.destinationAsgName) {
+        console.log(
+            'New instance launched in different ASG than target instance, so nothing to reattach'
+        );
         return event;
     }
 
-    return new Promise<TargetAndNewNodeResponse>((resolve, reject) => {
-        attachInstance(targetInstance, asg)
-            .then( () => {
-                resolve(event);
-            })
-            .catch(error => {
-                console.log(`Failed to reattach target instance: ${error}`);
-                reject(error);
-            })
-    })
-
+    await attachInstance(
+        target,
+        event.destinationAsgName,
+        rotationPlan,
+        event.newestElasticsearchNode.ec2Instance.id
+    );
+    return event;
 }
