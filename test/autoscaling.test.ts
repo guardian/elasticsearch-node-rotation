@@ -5,13 +5,15 @@ import {
     DescribeAutoScalingInstancesCommand,
     DetachInstancesCommand,
     SetDesiredCapacityCommand,
+    EnterStandbyCommand,
+    TerminateInstanceInAutoScalingGroupCommand,
 } from '@aws-sdk/client-auto-scaling';
-import { attachInstance, launchNewInstance } from '../src/aws/autoscaling';
+import { attachInstance, launchNewInstance, getRemovalState, reconcileStandby, reconcileTermination } from '../src/aws/autoscaling';
 import { getInstanceState } from '../src/aws/ec2Instances';
 import { Instance } from '../src/aws/types';
 import type { RotationPlan } from '../src/utils/handlerInputs';
 
-type Mutation = AttachInstancesCommand | DetachInstancesCommand | SetDesiredCapacityCommand;
+type Mutation = AttachInstancesCommand | DetachInstancesCommand | SetDesiredCapacityCommand | EnterStandbyCommand | TerminateInstanceInAutoScalingGroupCommand;
 type Command = Mutation | DescribeAutoScalingGroupsCommand | DescribeAutoScalingInstancesCommand;
 type Member = NonNullable<AutoScalingGroup['Instances']>[number];
 type TestGroup = AutoScalingGroup & { Instances: Member[]; DesiredCapacity: number };
@@ -143,6 +145,14 @@ beforeEach(() => {
         else if (command instanceof SetDesiredCapacityCommand) {
             const group = groups[command.input.AutoScalingGroupName!];
             group.DesiredCapacity = command.input.DesiredCapacity!;
+        } else if (command instanceof EnterStandbyCommand) {
+            groups.source.DesiredCapacity--;
+            groups.source.Instances.find(member => member.InstanceId === target.id)!.LifecycleState = 'Standby';
+            membership!.LifecycleState = 'Standby';
+        } else if (command instanceof TerminateInstanceInAutoScalingGroupCommand) {
+            groups.source.Instances = groups.source.Instances.filter(member => member.InstanceId !== target.id);
+            membership = undefined;
+            ec2State.mockResolvedValue('terminated');
         } else attached();
         afterMutation?.();
         // Model AWS accepting the write before the caller loses its response.
@@ -264,6 +274,91 @@ describe('planned AWS reconciliation', () => {
         await launchNewInstance(target, 'source', plan());
         expect(ec2State).toHaveBeenCalledTimes(2);
         expect(mutations).toHaveLength(1);
+    });
+});
+
+describe('removal reconciliation', () => {
+    beforeEach(() => attached());
+
+    it.each([false, true])('replays accepted standby without decrementing twice (cross-ASG=%s)', async crossAsg => {
+        if (crossAsg) {
+            groups.source.Instances = [member(target.id), member('i-peer')];
+            groups.source.DesiredCapacity = 2;
+            groups.destination.Instances.push(member('i-replacement'));
+            groups.destination.DesiredCapacity = 3;
+        }
+        lostResponse = 'EnterStandbyCommand';
+        await expect(reconcileStandby(target, plan(crossAsg), 'i-replacement')).rejects.toThrow('response lost');
+        await expect(reconcileStandby(target, plan(crossAsg), 'i-replacement')).resolves.toBe('Standby');
+        expect(mutations).toHaveLength(1);
+        expect(mutations[0].input).toEqual({
+            InstanceIds: [target.id], AutoScalingGroupName: 'source', ShouldDecrementDesiredCapacity: true,
+        });
+        expect(groups.source.DesiredCapacity).toBe(crossAsg ? 1 : 2);
+    });
+
+    it('waits for EnteringStandby without resubmitting', async () => {
+        groups.source.Instances.find(member => member.InstanceId === target.id)!.LifecycleState = 'EnteringStandby';
+        membership!.LifecycleState = 'EnteringStandby';
+        onObserve = round => {
+            if (round === 3) {
+                groups.source.Instances.find(member => member.InstanceId === target.id)!.LifecycleState = 'Standby';
+                membership!.LifecycleState = 'Standby';
+                groups.source.DesiredCapacity = 2;
+            }
+        };
+        await expect(reconcileStandby(target, plan(), 'i-replacement')).resolves.toBe('Standby');
+        expect(mutations).toHaveLength(0);
+    });
+
+    it('polls only after submitting standby, even if reads lag', async () => {
+        afterMutation = () => attached();
+        await expect(reconcileStandby(target, plan(), 'i-replacement')).rejects.toThrow('no mutation will be resubmitted');
+        expect(mutations).toHaveLength(1);
+    });
+
+    it('replays termination after a lost response and confirms EC2 termination', async () => {
+        await reconcileStandby(target, plan(), 'i-replacement');
+        lostResponse = 'TerminateInstanceInAutoScalingGroupCommand';
+        await expect(reconcileTermination(target, plan(), 'i-replacement')).rejects.toThrow('response lost');
+        await reconcileTermination(target, plan(), 'i-replacement');
+        expect(mutations).toHaveLength(2);
+        expect(mutations[1].input).toEqual({ InstanceId: target.id, ShouldDecrementDesiredCapacity: false });
+    });
+
+    it('waits for an in-progress termination without resubmission', async () => {
+        await reconcileStandby(target, plan(), 'i-replacement');
+        membership!.LifecycleState = 'Terminating';
+        groups.source.Instances.find(member => member.InstanceId === target.id)!.LifecycleState = 'Terminating';
+        ec2State.mockResolvedValue('shutting-down');
+        onObserve = () => ec2State.mockResolvedValue('terminated');
+        await reconcileTermination(target, plan(), 'i-replacement');
+        expect(mutations).toHaveLength(1);
+    });
+
+    it('does not equate successful termination submission with completed termination', async () => {
+        await reconcileStandby(target, plan(), 'i-replacement');
+        afterMutation = () => ec2State.mockResolvedValue('shutting-down');
+        await expect(reconcileTermination(target, plan(), 'i-replacement')).rejects.toThrow('confirmed termination');
+        expect(mutations).toHaveLength(2);
+    });
+
+    it.each([
+        ['detached running target', () => { detached(); groups.source.DesiredCapacity = 2; }],
+        ['wrong group', () => { membership!.AutoScalingGroupName = 'other'; }],
+        ['capacity drift', () => { groups.source.DesiredCapacity = 4; }],
+        ['replacement drift', () => { groups.source.Instances[1].InstanceId = 'i-other'; }],
+        ['recreated ASG', () => { groups.source.AutoScalingGroupARN = 'arn:other'; }],
+        ['stopped target', () => { ec2State.mockResolvedValue('stopped'); }],
+    ] as [string, () => void][])('fails closed on %s', async (_, change) => {
+        change();
+        await expect(getRemovalState(target, plan(), 'i-replacement')).rejects.toThrow();
+        expect(mutations).toHaveLength(0);
+    });
+
+    it('does not terminate an InService instance', async () => {
+        await expect(reconcileTermination(target, plan(), 'i-replacement')).rejects.toThrow('Refusing to terminate');
+        expect(mutations).toHaveLength(0);
     });
 });
 
