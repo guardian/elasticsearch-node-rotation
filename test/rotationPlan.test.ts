@@ -1,4 +1,7 @@
-import { RotationPlan, validateRotationPlan } from '../src/utils/handlerInputs';
+import {
+    AsgInput, RotationPlan, validateRotationPlan, requireRotationPlan, requireClusterSettingsPlan,
+} from '../src/utils/handlerInputs';
+import { Instance } from '../src/aws/types';
 
 function plan(): RotationPlan {
     const sourceAsg = {
@@ -14,6 +17,49 @@ function plan(): RotationPlan {
         expectedClusterSize: 3,
     };
 }
+
+function event(rotationPlan = plan()): AsgInput {
+    return {
+        destinationAsgName: 'source',
+        targetElasticSearchNode: {
+            ec2Instance: new Instance('i-target', new Date('2025-01-01'), '10.0.0.1', 'source'),
+            nodeId: 'node-target',
+            isMasterEligible: false,
+        },
+        rotationPlan,
+    };
+}
+
+it('allows PR1 plans for non-settings operations but requires a settings baseline for mutations', () => {
+    const input = event();
+    expect(requireRotationPlan(input)).toBe(input.rotationPlan);
+    expect(() => requireClusterSettingsPlan(input)).toThrow(/cluster settings baseline/i);
+});
+
+it('accepts serialized null and string settings and also validates the plan', () => {
+    const input = event();
+    input.rotationPlan.clusterSettings = {
+        rebalanceEnable: null,
+        allocationExcludeIp: '',
+        persistentAllocationExcludeIp: '10.0.0.9',
+    };
+    const saved = JSON.parse(JSON.stringify(input));
+    expect(requireClusterSettingsPlan(saved)).toEqual(input.rotationPlan);
+    saved.rotationPlan.version = 2;
+    expect(() => requireClusterSettingsPlan(saved)).toThrow(/rotation plan/i);
+});
+
+it.each([
+    {},
+    { rebalanceEnable: null, allocationExcludeIp: null },
+    { rebalanceEnable: false, allocationExcludeIp: null, persistentAllocationExcludeIp: null },
+    { rebalanceEnable: null, allocationExcludeIp: [], persistentAllocationExcludeIp: null },
+    { rebalanceEnable: null, allocationExcludeIp: null, persistentAllocationExcludeIp: 1 },
+])('rejects invalid settings snapshots: %j', (settings) => {
+    const input = event();
+    Object.assign(input.rotationPlan, { clusterSettings: settings });
+    expect(() => requireClusterSettingsPlan(input)).toThrow(/cluster settings baseline/i);
+});
 
 it('accepts a serialized same-ASG plan', () => {
     const saved = JSON.parse(JSON.stringify(plan()));

@@ -7,6 +7,7 @@ import {
     ClusterStatusResponse,
     requireRotationPlan,
     validateRotationPlan,
+    validateClusterSettings,
 } from './utils/handlerInputs';
 
 function snapshot(asg: AutoScalingGroup, name: string): AsgSnapshot {
@@ -50,8 +51,9 @@ export async function handler(event: AsgInput): Promise<ClusterStatusResponse> {
         return { ...event, clusterStatus: health.status, rotationPlan };
     }
 
-    const [health, source, destination] = await Promise.all([
+    const [health, clusterSettings, source, destination] = await Promise.all([
         elasticsearchClient.getClusterHealth(),
+        elasticsearchClient.getClusterSettings(),
         getASG(target.autoScalingGroupName),
         target.autoScalingGroupName === event.destinationAsgName
             ? Promise.resolve(undefined)
@@ -61,6 +63,7 @@ export async function handler(event: AsgInput): Promise<ClusterStatusResponse> {
         throw new Error('Cannot plan rotation: invalid cluster health response');
     }
 
+    validateClusterSettings(clusterSettings);
     const sourceAsg = snapshot(source, target.autoScalingGroupName);
     const destinationAsg = destination
         ? snapshot(destination, event.destinationAsgName)
@@ -70,6 +73,7 @@ export async function handler(event: AsgInput): Promise<ClusterStatusResponse> {
         sourceAsg,
         destinationAsg,
         expectedClusterSize: health.number_of_nodes + 1,
+        clusterSettings,
     };
     validateRotationPlan(
         rotationPlan,

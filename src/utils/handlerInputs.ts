@@ -36,11 +36,18 @@ export interface AsgSnapshot {
     instanceIds: string[];
 }
 
+export interface ClusterSettingsSnapshot {
+    rebalanceEnable: string | null;
+    allocationExcludeIp: string | null;
+    persistentAllocationExcludeIp: string | null;
+}
+
 export interface RotationPlan {
     version: 1;
     sourceAsg: AsgSnapshot;
     destinationAsg: AsgSnapshot;
     expectedClusterSize: number;
+    clusterSettings?: ClusterSettingsSnapshot;
 }
 
 export interface ClusterStatusResponse extends AsgInput {
@@ -105,6 +112,29 @@ export function validateRotationPlan(
                 'or reconcile the existing rotation first'
         );
     }
+}
+
+export function validateClusterSettings(settings: ClusterSettingsSnapshot): void {
+    const validValue = (value: unknown): boolean => value === null || typeof value === 'string';
+    if (
+        !settings ||
+        !validValue(settings.rebalanceEnable) ||
+        !validValue(settings.allocationExcludeIp) ||
+        !validValue(settings.persistentAllocationExcludeIp)
+    ) {
+        throw new Error(
+            'Missing or invalid cluster settings baseline; start a new planned rotation ' +
+                'or reconcile the existing rotation first'
+        );
+    }
+}
+
+export function requireClusterSettingsPlan(
+    event: AsgInput
+): RotationPlan & { clusterSettings: ClusterSettingsSnapshot } {
+    const plan = requireRotationPlan(event);
+    validateClusterSettings(plan.clusterSettings);
+    return plan as RotationPlan & { clusterSettings: ClusterSettingsSnapshot };
 }
 
 export function requireRotationPlan(event: AsgInput): RotationPlan {

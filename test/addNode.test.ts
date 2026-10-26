@@ -9,7 +9,7 @@ jest.mock('../src/aws/autoscaling', () => ({ launchNewInstance: jest.fn() }));
 jest.mock('../src/elasticsearch/elasticsearch');
 
 const launch = launchNewInstance as jest.MockedFunction<typeof launchNewInstance>;
-const updateRebalancingStatus = jest.fn();
+const disableRebalancing = jest.fn();
 const getClusterHealth = jest.fn();
 
 function input(): ClusterStatusResponse & { traceID: string } {
@@ -34,6 +34,7 @@ function input(): ClusterStatusResponse & { traceID: string } {
             sourceAsg,
             destinationAsg: { ...sourceAsg },
             expectedClusterSize: 3,
+            clusterSettings: { rebalanceEnable: null, allocationExcludeIp: null, persistentAllocationExcludeIp: null },
         },
     };
 }
@@ -41,16 +42,16 @@ function input(): ClusterStatusResponse & { traceID: string } {
 beforeEach(() => {
     jest.resetAllMocks();
     (Elasticsearch as jest.Mock).mockImplementation(() => ({
-        updateRebalancingStatus,
+        disableRebalancing,
         getClusterHealth,
     }));
-    updateRebalancingStatus.mockResolvedValue(true);
+    disableRebalancing.mockResolvedValue(undefined);
 });
 
 it('disables rebalancing before launch and preserves the saved plan', async () => {
     const event = JSON.parse(JSON.stringify(input()));
     const order: string[] = [];
-    updateRebalancingStatus.mockImplementation(async () => {
+    disableRebalancing.mockImplementation(async () => {
         order.push('rebalance');
     });
     launch.mockImplementation(async () => {
@@ -60,7 +61,7 @@ it('disables rebalancing before launch and preserves the saved plan', async () =
     const result = await handler(event);
 
     expect(order).toEqual(['rebalance', 'launch']);
-    expect(updateRebalancingStatus).toHaveBeenCalledWith('none');
+    expect(disableRebalancing).toHaveBeenCalledWith(event.rotationPlan.clusterSettings);
     expect(launch).toHaveBeenCalledWith(
         event.targetElasticSearchNode.ec2Instance,
         event.destinationAsgName,
@@ -85,12 +86,12 @@ it('requires a plan before disabling rebalancing or launching', async () => {
 
     await expect(handler(event)).rejects.toThrow(/rotation plan/i);
     expect(Elasticsearch).not.toHaveBeenCalled();
-    expect(updateRebalancingStatus).not.toHaveBeenCalled();
+    expect(disableRebalancing).not.toHaveBeenCalled();
     expect(launch).not.toHaveBeenCalled();
 });
 
 it('does not launch when disabling rebalancing fails', async () => {
-    updateRebalancingStatus.mockRejectedValue(new Error('rebalance failed'));
+    disableRebalancing.mockRejectedValue(new Error('rebalance failed'));
 
     await expect(handler(input())).rejects.toThrow('rebalance failed');
     expect(launch).not.toHaveBeenCalled();

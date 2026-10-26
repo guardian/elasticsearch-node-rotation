@@ -10,6 +10,12 @@ jest.mock('../src/elasticsearch/elasticsearch');
 
 const getGroup = getASG as jest.MockedFunction<typeof getASG>;
 const getClusterHealth = jest.fn();
+const getClusterSettings = jest.fn();
+const clusterSettings = {
+    rebalanceEnable: null,
+    allocationExcludeIp: null,
+    persistentAllocationExcludeIp: '10.0.0.9',
+};
 
 type AsgFixture = AutoScalingGroup & {
     DesiredCapacity: number;
@@ -44,8 +50,10 @@ beforeEach(() => {
     jest.resetAllMocks();
     (Elasticsearch as jest.Mock).mockImplementation(() => ({
         getClusterHealth,
+        getClusterSettings,
     }));
     getClusterHealth.mockResolvedValue({ status: 'green', number_of_nodes: 2 });
+    getClusterSettings.mockResolvedValue(clusterSettings);
     getGroup.mockImplementation(async (name) =>
         group(name, name === 'source' ? ['i-target', 'i-peer'] : [])
     );
@@ -68,6 +76,7 @@ it('saves a serializable baseline before any capacity mutation, preserving metad
             sourceAsg,
             destinationAsg: sourceAsg,
             expectedClusterSize: 3,
+            clusterSettings,
         },
     });
     expect(getGroup).toHaveBeenCalledTimes(1);
@@ -89,10 +98,27 @@ it('records a separate empty destination for cross-ASG rotation', async () => {
 it('does not rebuild an existing plan from changed observations', async () => {
     const saved = JSON.parse(JSON.stringify(await handler(input())));
     getGroup.mockClear();
+    getClusterSettings.mockClear();
+    getClusterSettings.mockResolvedValue({ ...clusterSettings, rebalanceEnable: 'none' });
     getClusterHealth.mockResolvedValue({ status: 'yellow', number_of_nodes: 10 });
 
     expect(await handler(saved)).toEqual({ ...saved, clusterStatus: 'yellow' });
     expect(getGroup).not.toHaveBeenCalled();
+    expect(getClusterSettings).not.toHaveBeenCalled();
+});
+
+it('does not retrofit a settings baseline into an existing PR1 plan', async () => {
+    const saved = await handler(input());
+    delete saved.rotationPlan.clusterSettings;
+    getClusterSettings.mockClear();
+    expect((await handler(saved)).rotationPlan).not.toHaveProperty('clusterSettings');
+    expect(getClusterSettings).not.toHaveBeenCalled();
+});
+
+it('does not produce a plan when settings capture fails', async () => {
+    getClusterSettings.mockRejectedValue(new Error('settings unavailable'));
+    await expect(handler(input())).rejects.toThrow('settings unavailable');
+    expect(launchNewInstance).not.toHaveBeenCalled();
 });
 
 const unstableGroups: Array<[string, (asg: AsgFixture) => void]> = [

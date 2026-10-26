@@ -9,6 +9,8 @@ import {
 import {GetObjectCommand, GetObjectCommandOutput, S3} from "@aws-sdk/client-s3";
 
 const ssm = new SSM();
+// Submission has no idempotency token; a lost response may hide an accepted command.
+const ssmSubmissions = new SSM({ maxAttempts: 1 });
 const s3 = new S3();
 
 export async function ssmCommand(command: string, instanceId: string, outputExpected: boolean = true): Promise<string> {
@@ -40,7 +42,7 @@ async function sendCommand(command, instanceId): Promise<SendCommandCommandOutpu
         ],
         OutputS3BucketName: process.env.SSM_BUCKET_NAME
     });
-    return ssm.send(req);
+    return ssmSubmissions.send(req);
 }
 
 const terminalState = new Set(['Success', 'TimedOut', 'Failed', 'Cancelled']);
