@@ -27,8 +27,7 @@ export async function handler(event: AddNodeResponse): Promise<TargetAndNewNodeR
             })
             .then( (newestElasticsearchNode: ElasticsearchNode) => {
                 const response: TargetAndNewNodeResponse = {
-                    "destinationAsgName": event.destinationAsgName,
-                    "targetElasticSearchNode": event.targetElasticSearchNode,
+                    ...event,
                     "newestElasticsearchNode": newestElasticsearchNode
                 };
                 resolve(response);

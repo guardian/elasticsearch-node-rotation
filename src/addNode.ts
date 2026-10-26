@@ -1,32 +1,14 @@
-import {launchNewInstance} from './aws/autoscaling';
-import {AddNodeResponse, ClusterStatusResponse} from './utils/handlerInputs';
-import {Elasticsearch} from './elasticsearch/elasticsearch';
-import {Instance} from './aws/types';
-import {ElasticsearchClusterStatus} from './elasticsearch/types';
+import { launchNewInstance } from './aws/autoscaling';
+import { AddNodeResponse, ClusterStatusResponse, requireRotationPlan } from './utils/handlerInputs';
+import { Elasticsearch } from './elasticsearch/elasticsearch';
 
 export async function handler(event: ClusterStatusResponse): Promise<AddNodeResponse> {
+    const rotationPlan = requireRotationPlan(event);
+    const target = event.targetElasticSearchNode.ec2Instance;
+    const elasticsearchClient = new Elasticsearch(target.id);
 
-    const targetInstance: Instance = event.targetElasticSearchNode.ec2Instance;
-    const asg: string = event.destinationAsgName;
-    const elasticsearchClient = new Elasticsearch(targetInstance.id)
+    await elasticsearchClient.updateRebalancingStatus('none');
+    await launchNewInstance(target, event.destinationAsgName);
 
-    return new Promise<AddNodeResponse>((resolve, reject) => {
-
-        elasticsearchClient.updateRebalancingStatus("none")
-            .then(() => launchNewInstance(targetInstance, asg))
-            .then(() => elasticsearchClient.getClusterHealth())
-            .then((clusterStatus: ElasticsearchClusterStatus) => {
-                const response: AddNodeResponse = {
-                    "destinationAsgName": asg,
-                    "targetElasticSearchNode": event.targetElasticSearchNode,
-                    "expectedClusterSize": clusterStatus.number_of_nodes + 1
-                };
-                resolve(response);
-            })
-            .catch(error => {
-                console.log(`Failed to add a new node due to: ${error}`);
-                reject(error);
-            })
-    })
-
+    return { ...event, expectedClusterSize: rotationPlan.expectedClusterSize };
 }
