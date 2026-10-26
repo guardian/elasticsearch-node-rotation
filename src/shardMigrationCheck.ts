@@ -1,20 +1,14 @@
-import {TargetAndNewNodeResponse} from './utils/handlerInputs';
-import {Elasticsearch} from './elasticsearch/elasticsearch';
+import { TargetAndNewNodeResponse } from './utils/handlerInputs';
+import { Elasticsearch } from './elasticsearch/elasticsearch';
 
 export async function handler(event: TargetAndNewNodeResponse): Promise<TargetAndNewNodeResponse> {
-    const elasticsearchClient = new Elasticsearch(event.targetElasticSearchNode.ec2Instance.id)
-
-    return Promise.all([
-        elasticsearchClient.getClusterHealth(),
-        elasticsearchClient.getDocuments(event.targetElasticSearchNode)
-    ]).then(([clusterStatus, documents]) => {
-        const hasDocuments = documents.count > 0;
-        const clusterIsUnhealthy = !(clusterStatus.status === "green");
-
-        if (clusterIsUnhealthy || hasDocuments) {
-            const error = `Check failed: hasDocuments=${hasDocuments} (${event.targetElasticSearchNode.ec2Instance.id} still has ${documents.count} docs) clusterIsUnhealthy=${clusterIsUnhealthy} (status is currently ${clusterStatus.status})`;
-            console.log(error);
-            throw new Error(error);
-        } else return event;
-    });
+    const client = new Elasticsearch(event.targetElasticSearchNode.ec2Instance.id);
+    const [health, shards] = await Promise.all([
+        client.getClusterHealth(),
+        client.getAllocatedShardCount(event.targetElasticSearchNode),
+    ]);
+    if (health.status !== 'green' || health.relocating_shards !== 0 || shards !== 0) {
+        throw new Error(`Shard migration incomplete: status=${health.status}, relocating=${health.relocating_shards}, targetShards=${shards}`);
+    }
+    return event;
 }

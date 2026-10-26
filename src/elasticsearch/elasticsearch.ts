@@ -1,7 +1,6 @@
 import {Instance} from '../aws/types';
-import {Documents, ElasticsearchClusterStatus, ElasticsearchNode, NodeStats,} from './types';
+import { ElasticsearchClusterStatus, ElasticsearchNode } from './types';
 import {ssmCommand} from '../utils/ssmCommand';
-import {retry} from '../utils/helperFunctions';
 import { ClusterSettingsSnapshot, validateClusterSettings } from '../utils/handlerInputs';
 
 const rebalanceSetting = 'cluster.routing.rebalance.enable';
@@ -20,7 +19,9 @@ function migrationExclusions(settings: ClusterSettingsSnapshot, targetIp: string
         throw new Error('Missing or invalid migration target IP');
     }
     const baseline = settings.allocationExcludeIp ?? settings.persistentAllocationExcludeIp;
-    if (!baseline) return targetIp;
+    if (!baseline) {
+        return targetIp;
+    }
     return baseline.split(',').some((ip) => ip.trim() === targetIp)
         ? baseline
         : `${baseline},${targetIp}`;
@@ -43,16 +44,6 @@ export class Elasticsearch {
             })
     }
 
-    executeCommand(commandPath: string, requestJson: object, taskName: string): Promise<boolean> {
-        return retry(() => this.execute(commandPath, requestJson).then((jsonResult: any) => {
-            if (!(jsonResult.acknowledged === true)) {
-                throw `unexpected Elasticsearch response when attempting to ${taskName}, we got: ${JSON.stringify(jsonResult)}`;
-            } else {
-                return true;
-            }
-        }), taskName, 5);
-    }
-
     getClusterHealth(): Promise<ElasticsearchClusterStatus> {
         return this.execute('/_cluster/health')
     }
@@ -62,19 +53,17 @@ export class Elasticsearch {
         return this.execute(`/_nodes/${instance.privateIp}`).then((json: any) => {
             if (json._nodes.total === 1) {
                 const nodeId: string = Object.keys(json.nodes)[0];
-                const isMasterEligible: boolean = json.nodes[nodeId].settings.node.master == 'true'
-                  || json.nodes[nodeId].settings.node.roles?.includes('master')
-                  || false;
+                const node = json.nodes[nodeId];
+                const roles = node.roles ?? node.settings?.node?.roles;
+                const master = node.settings?.node?.master ?? node.settings?.['node.master'];
+                const isMasterEligible = Array.isArray(roles)
+                    ? roles.includes('master')
+                    : master === undefined || master === true || master === 'true';
                 return new ElasticsearchNode(instance, nodeId, isMasterEligible);
             } else {
                 throw `expected information about a single node, but got: ${JSON.stringify(json)}`;
             }
         })
-    }
-
-    getDocuments(node: ElasticsearchNode): Promise<Documents> {
-        return this.execute(`/_nodes/${node.ec2Instance.privateIp}/stats`)
-            .then((nodeStats: NodeStats) => { return nodeStats.nodes[node.nodeId].indices.docs; });
     }
 
     async getClusterSettings(): Promise<ClusterSettingsSnapshot> {
@@ -93,7 +82,12 @@ export class Elasticsearch {
 
     async disableRebalancing(settings: ClusterSettingsSnapshot): Promise<void> {
         validateClusterSettings(settings);
-        await this.writeRotationSettings(settings, settings.allocationExcludeIp, 'none', settings.allocationExcludeIp);
+        await this.writeRotationSettings(
+            settings,
+            settings.allocationExcludeIp,
+            'none',
+            settings.allocationExcludeIp
+        );
     }
 
     async assertMigrationSettings(settings: ClusterSettingsSnapshot, targetIp: string): Promise<void> {
@@ -116,7 +110,10 @@ export class Elasticsearch {
         validateClusterSettings(settings);
         const exclusions = migrationExclusions(settings, targetIp);
         await this.writeRotationSettings(
-            settings, exclusions, settings.rebalanceEnable, settings.allocationExcludeIp
+            settings,
+            exclusions,
+            settings.rebalanceEnable,
+            settings.allocationExcludeIp
         );
     }
 
@@ -137,7 +134,9 @@ export class Elasticsearch {
         if (
             current.rebalanceEnable === rebalanceEnable &&
             current.allocationExcludeIp === allocationExcludeIp
-        ) return;
+        ) {
+            return;
+        }
 
         // Do not retry an uncertain SSM write: a delayed command may still execute later.
         const result = await this.execute('/_cluster/settings', {
@@ -185,25 +184,13 @@ export class Elasticsearch {
                     ) {
                         throw new Error('Invalid Elasticsearch shard allocation');
                     }
-                    if (shard.node === node.nodeId || shard.relocating_node === node.nodeId) count++;
+                    if (shard.node === node.nodeId || shard.relocating_node === node.nodeId) {
+                        count++;
+                    }
                 }
             }
         }
         return count;
-    }
-
-    setClusterSetting(settingName: string, settingValue: string | null): Promise<boolean> {
-        return this.executeCommand("/_cluster/settings", {
-            "transient": { [settingName]: settingValue }
-        }, `setting cluster setting ${settingName} to '${settingValue}'`)
-    }
-
-    updateRebalancingStatus(status: string): Promise<boolean> {
-        return this.setClusterSetting("cluster.routing.rebalance.enable", status);
-    }
-
-    excludeFromAllocation(ip: string): Promise<boolean> {
-        return this.setClusterSetting("cluster.routing.allocation.exclude._ip", ip);
     }
 }
 

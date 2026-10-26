@@ -13,7 +13,6 @@ import {
     EnterStandbyCommand,
     SetDesiredCapacityCommand,
     TerminateInstanceInAutoScalingGroupCommand,
-    TerminateInstanceInAutoScalingGroupCommandOutput,
 } from '@aws-sdk/client-auto-scaling';
 
 const awsAutoscaling = new AutoScaling();
@@ -290,7 +289,9 @@ export async function getRemovalState(
             : getASG(plan.destinationAsg.name),
         retry(() => getInstanceState(instance.id), `reading EC2 state for ${instance.id}`, 5),
         retry(
-            () => awsAutoscaling.send(new DescribeAutoScalingInstancesCommand({ InstanceIds: [instance.id] })),
+            () => awsAutoscaling.send(
+                new DescribeAutoScalingInstancesCommand({ InstanceIds: [instance.id] })
+            ),
             `reading ASG membership for ${instance.id}`,
             5
         ),
@@ -318,30 +319,46 @@ export async function getRemovalState(
     const memberships = response.AutoScalingInstances ?? [];
     if (
         memberships.length > 1 ||
-        memberships.some((member) => member.InstanceId !== instance.id || member.AutoScalingGroupName !== plan.sourceAsg.name)
+        memberships.some(
+            (member) =>
+                member.InstanceId !== instance.id ||
+                member.AutoScalingGroupName !== plan.sourceAsg.name
+        )
     ) {
         throw new Error(`Target ${instance.id} has unexpected/wrong ASG membership`);
     }
     const target = source.Instances?.find((member) => member.InstanceId === instance.id);
-    const states = [target?.LifecycleState, memberships[0]?.LifecycleState].filter(state => state !== undefined);
-    const terminating = (state: string) => ['Terminating', 'Terminating:Wait', 'Terminating:Proceed'].includes(state);
-    if (states.some(state => !['InService', 'EnteringStandby', 'Standby'].includes(state) && !terminating(state))) {
+    const states = [target?.LifecycleState, memberships[0]?.LifecycleState].filter(
+        (state) => state !== undefined
+    );
+    const terminating = (state: string) =>
+        ['Terminating', 'Terminating:Wait', 'Terminating:Proceed'].includes(state);
+    if (
+        states.some(
+            (state) =>
+                !['InService', 'EnteringStandby', 'Standby'].includes(state) && !terminating(state)
+        )
+    ) {
         throw new Error(`Unexpected removal lifecycle for ${instance.id}: ${states.join(', ')}`);
     }
     if (ec2 === 'terminated' || ec2 === 'shutting-down' || states.some(terminating)) {
         if (
             source.DesiredCapacity !== afterStandby ||
-            states.some(state => !terminating(state) && state !== 'Standby')
+            states.some((state) => !terminating(state) && state !== 'Standby')
         ) {
             throw new Error(`Unexpected capacity/lifecycle during termination of ${instance.id}`);
         }
         return ec2 === 'terminated' ? 'Terminated' : 'Terminating';
     }
     if (
-        ec2 !== 'running' || !target || memberships.length !== 1 ||
+        ec2 !== 'running' ||
+        !target ||
+        memberships.length !== 1 ||
         target.LifecycleState !== memberships[0].LifecycleState
     ) {
-        throw new Error(`Ambiguous removal state for ${instance.id}; reconcile EC2/ASG membership first`);
+        throw new Error(
+            `Ambiguous removal state for ${instance.id}; reconcile EC2/ASG membership first`
+        );
     }
     const state = target.LifecycleState;
     if (
@@ -359,21 +376,31 @@ export async function reconcileStandby(
     replacementInstanceId: string
 ): Promise<RemovalState> {
     const state = await getRemovalState(instance, plan, replacementInstanceId);
-    if (state === 'Standby' || state === 'Terminating' || state === 'Terminated') return state;
-    if (state === 'InService') {
-        await awsAutoscalingMutations.send(new EnterStandbyCommand({
-            InstanceIds: [instance.id],
-            AutoScalingGroupName: plan.sourceAsg.name,
-            ShouldDecrementDesiredCapacity: true,
-        }));
+    if (state === 'Standby' || state === 'Terminating' || state === 'Terminated') {
+        return state;
     }
-    return retry(async () => {
-        const observed = await getRemovalState(instance, plan, replacementInstanceId);
-        if (observed === 'InService' || observed === 'EnteringStandby') {
-            throw new Error(`Waiting for ${instance.id} to reach Standby; no mutation will be resubmitted`);
-        }
-        return observed;
-    }, `waiting for ${instance.id} to reach Standby`, 30);
+    if (state === 'InService') {
+        await awsAutoscalingMutations.send(
+            new EnterStandbyCommand({
+                InstanceIds: [instance.id],
+                AutoScalingGroupName: plan.sourceAsg.name,
+                ShouldDecrementDesiredCapacity: true,
+            })
+        );
+    }
+    return retry(
+        async () => {
+            const observed = await getRemovalState(instance, plan, replacementInstanceId);
+            if (observed === 'InService' || observed === 'EnteringStandby') {
+                throw new Error(
+                    `Waiting for ${instance.id} to reach Standby; no mutation will be resubmitted`
+                );
+            }
+            return observed;
+        },
+        `waiting for ${instance.id} to reach Standby`,
+        30
+    );
 }
 
 export async function reconcileTermination(
@@ -382,52 +409,30 @@ export async function reconcileTermination(
     replacementInstanceId: string
 ): Promise<void> {
     const state = await getRemovalState(instance, plan, replacementInstanceId);
-    if (state === 'Terminated') return;
+    if (state === 'Terminated') {
+        return;
+    }
     if (state === 'Standby') {
-        await awsAutoscalingMutations.send(new TerminateInstanceInAutoScalingGroupCommand({
-            InstanceId: instance.id,
-            ShouldDecrementDesiredCapacity: false,
-        }));
+        await awsAutoscalingMutations.send(
+            new TerminateInstanceInAutoScalingGroupCommand({
+                InstanceId: instance.id,
+                ShouldDecrementDesiredCapacity: false,
+            })
+        );
     } else if (state !== 'Terminating') {
         throw new Error(`Refusing to terminate ${instance.id} in ${state}`);
     }
-    await retry(async () => {
-        if (await getRemovalState(instance, plan, replacementInstanceId) !== 'Terminated') {
-            throw new Error(`Waiting for confirmed termination of ${instance.id}; no mutation will be resubmitted`);
-        }
-    }, `waiting for termination of ${instance.id}`, 20);
-}
-
-export async function enterStandby(instance: Instance): Promise<void> {
-    console.log(`Entering standby for instance ${instance.id} in ${instance.autoScalingGroupName}`);
-    const params = {
-        InstanceIds: [ instance.id ],
-        AutoScalingGroupName: instance.autoScalingGroupName,
-        ShouldDecrementDesiredCapacity: true
-    };
-    const req = new EnterStandbyCommand(params);
-
-    await retry(() => awsAutoscaling.send(req), `entering standby for instance ${instance.id}`, 5);
-
-    await retry(async () => {
-        const asg = await getASG(instance.autoScalingGroupName);
-        const asgInstance = asg.Instances?.find(i => i.InstanceId === instance.id);
-        const state = asgInstance?.LifecycleState;
-        if (state !== 'Standby') {
-            throw new Error(`Instance ${instance.id} is in state ${state}, waiting for Standby`);
-        }
-    }, `waiting for instance ${instance.id} to reach Standby`, 30);
-}
-
-export function terminateInstanceInASG(instance: Instance): Promise<TerminateInstanceInAutoScalingGroupCommandOutput> {
-    console.log(`Terminating instance ${instance.id}`);
-    const params = {
-        InstanceId: instance.id,
-        ShouldDecrementDesiredCapacity: false
-    };
-    const req = new TerminateInstanceInAutoScalingGroupCommand(params);
-
-    return retry(() => awsAutoscaling.send(req), `terminating instance ${instance.id}`, 5)
+    await retry(
+        async () => {
+            if (await getRemovalState(instance, plan, replacementInstanceId) !== 'Terminated') {
+                throw new Error(
+                    `Waiting for confirmed termination of ${instance.id}; no mutation will be resubmitted`
+                );
+            }
+        },
+        `waiting for termination of ${instance.id}`,
+        20
+    );
 }
 
 export function describeAsg(asgName: string): Promise<DescribeAutoScalingGroupsCommandOutput> {

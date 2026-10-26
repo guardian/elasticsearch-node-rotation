@@ -33,6 +33,17 @@ it('shell-quotes arbitrary JSON without interpreting apostrophes or shell expres
     expect(ssmCommand).toHaveBeenCalledWith(expect.any(String), 'i-survivor');
 });
 
+it.each([
+    [{ roles: ['master', 'data'], settings: {} }, true],
+    [{ roles: ['data'], settings: { node: { master: 'true' } } }, false],
+    [{ settings: { node: { master: 'false' } } }, false],
+    [{ settings: {} }, true],
+])('identifies current and legacy master roles: %j', async (node, eligible) => {
+    jest.spyOn(client, 'execute').mockResolvedValue({ _nodes: { total: 1 }, nodes: { 'node-id': node } });
+    const instance = new Instance('i-target', new Date('2025-01-01'), targetIp, 'source');
+    expect((await client.getElasticsearchNode(instance)).isMasterEligible).toBe(eligible);
+});
+
 it('reads flattened transient settings, preserving strings, empty strings and absent values', async () => {
     const execute = jest.spyOn(client, 'execute').mockResolvedValue({
         transient: { [exclusion]: '' }, persistent: { [exclusion]: '10.0.0.9' },

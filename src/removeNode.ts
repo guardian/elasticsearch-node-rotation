@@ -1,65 +1,37 @@
-import {TargetAndNewNodeResponse} from './utils/handlerInputs';
-import {ssmCommand} from './utils/ssmCommand';
-import {enterStandby, getASG, terminateInstanceInASG} from "./aws/autoscaling";
-import {Instance} from './aws/types';
-import {Elasticsearch} from './elasticsearch/elasticsearch';
+import { TargetAndNewNodeResponse, requireClusterSettingsPlan } from './utils/handlerInputs';
+import { ssmCommand } from './utils/ssmCommand';
+import { getRemovalState, reconcileStandby, reconcileTermination } from './aws/autoscaling';
+import { survivingClient } from './elasticsearch/survivingClient';
+import { assertSafeToRemove } from './elasticsearch/removalSafety';
 
 export async function handler(event: TargetAndNewNodeResponse): Promise<TargetAndNewNodeResponse> {
+    const plan = requireClusterSettingsPlan(event);
+    const target = event.targetElasticSearchNode.ec2Instance;
+    const replacementId = event.newestElasticsearchNode.ec2Instance.id;
+    let state = await getRemovalState(target, plan, replacementId);
 
-    const targetInstance: Instance = event.targetElasticSearchNode.ec2Instance;
-    await enterStandby(targetInstance);
-
-    if (event.targetElasticSearchNode.isMasterEligible) try {
-        console.log(`attempting to smoothly shutdown master-eligible node: ${targetInstance.id}`);
-        await ssmCommand("systemctl stop elasticsearch", targetInstance.id, false);
-    } catch(error) {
-        console.log(`Will still attempt to terminate ${targetInstance.id} after best effort at gentle shutdown not completed due to: ${error}`);
-    }
-
-    const allocationClearCandidates = await getAllocationClearCandidates(event);
-
-    await Promise.all([
-        terminateInstanceInASG(targetInstance),
-        clearAllocationExclusion(allocationClearCandidates)
-    ]);
-
-    return event;
-}
-
-async function getAllocationClearCandidates(event: TargetAndNewNodeResponse): Promise<string[]> {
-    const candidateIds = new Set<string>();
-    candidateIds.add(event.newestElasticsearchNode.ec2Instance.id);
-    candidateIds.add(event.targetElasticSearchNode.ec2Instance.id);
-
-    try {
-        const asg = await getASG(event.destinationAsgName);
-        const inServiceIds = asg.Instances
-            ?.filter(instance => instance.InstanceId && instance.LifecycleState === 'InService')
-            .map(instance => instance.InstanceId as string);
-        inServiceIds?.forEach(id => candidateIds.add(id));
-    } catch (error) {
-        console.log(`Failed to list ASG instances for allocation cleanup: ${error}`);
-    }
-
-    return Array.from(candidateIds);
-}
-
-async function clearAllocationExclusion(instanceIds: string[]): Promise<void> {
-    if (instanceIds.length === 0) {
-        console.log('No instances available to clear allocation exclusion; skipping');
-        return;
-    }
-
-    for (const instanceId of instanceIds) {
-        try {
-            const elasticsearchClient = new Elasticsearch(instanceId);
-            await elasticsearchClient.excludeFromAllocation(""); // Don't exclude any ips
-            console.log(`Cleared allocation exclusion via ${instanceId}`);
-            return;
-        } catch (error) {
-            console.log(`Failed to clear allocation exclusion via ${instanceId}: ${error}`);
+    if (state === 'InService' || state === 'EnteringStandby' || state === 'Standby') {
+        const client = await survivingClient(event);
+        if (state === 'InService') {
+            await assertSafeToRemove(client, event, false);
+        }
+        if (state === 'InService' || state === 'EnteringStandby') {
+            state = await reconcileStandby(target, plan, replacementId);
+        }
+        if (state === 'Standby') {
+            // A failed invocation may already have stopped Elasticsearch on this node.
+            await assertSafeToRemove(client, event, true);
+            if (event.targetElasticSearchNode.isMasterEligible) {
+                try {
+                    await ssmCommand('systemctl stop elasticsearch', target.id, false);
+                } catch (error) {
+                    console.log(`Best-effort shutdown of ${target.id} failed: ${error}`);
+                }
+            }
         }
     }
-
-    throw new Error('Failed to clear allocation exclusion via any instance');
+    if (state !== 'Terminated') {
+        await reconcileTermination(target, plan, replacementId);
+    }
+    return event;
 }

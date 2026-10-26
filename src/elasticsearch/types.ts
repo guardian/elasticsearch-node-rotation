@@ -19,23 +19,3 @@ export class ElasticsearchNode {
     }
 
 }
-
-export interface NodeStats {
-    nodes: NodeInfoObject
-}
-
-interface NodeInfoObject {
-    [key: string]: NodeInfo
-}
-
-interface NodeInfo {
-    indices: IndicesInfo
-}
-
-interface IndicesInfo {
-    docs: Documents
-}
-
-export interface Documents {
-    count: number
-}

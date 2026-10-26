@@ -25,6 +25,7 @@ templates:
       - -enr-migrate-shards-
       - -enr-shard-migration-check-
       - -enr-remove-node-
+      - -enr-restore-cluster-settings-
 
 deployments:
   deploy-tools-enr-cloudformation:
