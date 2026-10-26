@@ -66,15 +66,16 @@ it('disables rebalancing before launch and preserves the saved plan', async () =
         event.destinationAsgName,
         event.rotationPlan
     );
-    expect(result).toEqual({ ...event, expectedClusterSize: 3 });
+    expect(result).toEqual(event);
     expect(result.rotationPlan).toBe(event.rotationPlan);
 });
 
 it('does not recalculate the saved cluster size', async () => {
-    const event = { ...input(), expectedClusterSize: 999 };
+    const event = input();
     getClusterHealth.mockResolvedValue({ number_of_nodes: 3 });
 
-    expect(await handler(event)).toEqual({ ...event, expectedClusterSize: 3 });
+    const result = await handler(event);
+    expect(result.rotationPlan.expectedClusterSize).toBe(3);
     expect(getClusterHealth).not.toHaveBeenCalled();
 });
 

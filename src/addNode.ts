@@ -10,5 +10,5 @@ export async function handler(event: ClusterStatusResponse): Promise<AddNodeResp
     await elasticsearchClient.updateRebalancingStatus('none');
     await launchNewInstance(target, event.destinationAsgName, rotationPlan);
 
-    return { ...event, expectedClusterSize: rotationPlan.expectedClusterSize };
+    return event;
 }

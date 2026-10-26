@@ -50,7 +50,6 @@ export interface ClusterStatusResponse extends AsgInput {
 
 export interface AddNodeResponse extends AsgInput {
     rotationPlan: RotationPlan;
-    expectedClusterSize: number;
 }
 
 export function validateRotationPlan(
