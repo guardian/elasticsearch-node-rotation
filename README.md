@@ -30,7 +30,23 @@ Sometimes it's useful to rotate an ES node manually (e.g. during an ES upgrade),
 
 ### Recovering from failures
 
-By default, the step function will refuse to run if the previous run failed (including if the previous run failed due to a prior failure). Once the problem has been diagnosed and resolved, rerun the execution by pressing `New Execution` and editing the input object to set `"skipFailureCheck": true`.
+For a partially completed rotation, **fix the cause and redrive the same failed execution** using Step Functions' **Redrive** action. Do not use `New Execution` to resume: it performs discovery again and does not retain the rotation's saved baselines or replacement identity. Standard workflow redrive is normally available for 14 days after completion; check the execution's eligibility in AWS.
+
+1. Inspect the failed Task, its input, and Lambda logs. Check the saved `rotationPlan`, target/replacement identity, ASG membership/capacity, and current cluster health/settings.
+2. Resolve the underlying issue (for example SSM connectivity, permissions, a slow lifecycle transition, or shard migration). Avoid concurrent rotations, scaling changes, or manual settings changes while recovery is in progress.
+3. Redrive the failed execution. Successful Tasks are retained; the whole failed Task runs again. Capacity operations reconcile with the saved plan, and removal observes standby/termination progress rather than blindly repeating requests.
+
+Removal rechecks shard evacuation and master quorum before shutdown/termination. It waits for confirmed EC2 termination before the separate `RestoreClusterSettings` Task restores the original transient rebalancing and IP-exclusion settings through a surviving node. If this final Task fails, redrive retries cleanup without needing to contact or rediscover the terminated target. Existing exclusions are preserved; unexpected setting, membership, capacity, or identity changes fail closed for operator reconciliation.
+
+Important limits:
+
+- Failed or timed-out responses do not prove that an AWS or SSM operation failed to apply. Before redriving an uncertain SSM write, ensure the earlier command has finished or been cancelled and reconcile its effects. Command IDs are not durably tracked, and delayed commands cannot be made atomic with the workflow by these checks.
+- Missing EC2 visibility is not proof of termination. If `RemoveNode` itself has not completed and the target is no longer queryable, or a running target is unexpectedly detached, reconcile manually rather than guessing or launching another replacement.
+- Master removal requires a remaining majority of both modern voting configurations, or a safe legacy `discovery.zen.minimum_master_nodes` setting. Unknown/unsupported coordination information requires manual investigation.
+- Existing executions without saved capacity/settings baselines cannot safely reconstruct them after mutations. Reconcile these manually; do not manufacture a plan from the partially changed cluster. Redrive retains the original workflow definition, so old executions do not acquire the new cleanup Task merely by deploying this version.
+- There is no distributed lock or cross-execution takeover. `PreviousRunCheck` is a guard, not a concurrency guarantee. Temporary settings are intentionally retained on failure until the rotation can safely resume; there is no generic rollback.
+
+By default, new executions are blocked after a failed run. Only **after the unfinished rotation and cluster settings have been reconciled**, use `New Execution` with `"skipFailureCheck": true` to permit a fresh rotation. This flag is not a resume mechanism.
 
 ### Rotating nodes into a new ASG
 
@@ -59,7 +75,8 @@ This Step Function triggers a number of TypeScript lambdas, which coordinate the
 * Adding a new node into the cluster
 * Migrating all data from the target node onto the new node (if data is present)
 * Shutting down Elasticsearch on the empty node
-* Terminating the unused EC2 instance
+* Confirming termination of the unused EC2 instance
+* Restoring the original transient cluster settings through a surviving node
 
 In order to ensure that the new EC2 instance is brought up in the same Availablity Zone as the target EC2 instance, 
 the target instance is [detached](https://docs.aws.amazon.com/autoscaling/ec2/userguide/detach-instance-asg.html) from its ASG
